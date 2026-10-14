@@ -1,4 +1,3 @@
-import { UserButton } from "@clerk/nextjs"
 import { auth } from "@clerk/nextjs/server"
 import { PlusIcon } from "lucide-react"
 import { nanoid } from "nanoid"
@@ -19,10 +18,6 @@ export default async function Page() {
 
   return (
     <main className="flex min-h-svh flex-col p-6">
-      <header className="flex items-center justify-between">
-        <span className="font-medium">AI Teammates</span>
-        <UserButton />
-      </header>
       <Empty>
         <EmptyHeader>
           <EmptyMedia>

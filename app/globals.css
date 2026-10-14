@@ -119,11 +119,64 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    }
+  }
   body {
     @apply bg-background text-foreground;
-    }
+  }
   html {
     @apply font-sans;
-    }
+  }
+}
+
+/* Sidebar account row. Clerk's UserButton takes no className, so the
+   SidebarMenuButton geometry it is rendered as can't reach it — the sizing
+   is enforced here against Clerk's stable classes instead. Plain declarations
+   with !important win over Clerk's runtime-injected stylesheet regardless of
+   load order. Scoped to sidebar menu items so other Clerk UI is untouched. */
+[data-slot="sidebar-menu-item"] .cl-rootBox {
+  display: block !important;
+  width: 100% !important;
+}
+
+[data-slot="sidebar-menu-item"] .cl-userButtonBox {
+  width: 100% !important;
+}
+
+[data-slot="sidebar-menu-item"] button.cl-userButtonTrigger {
+  display: flex !important;
+  width: 100% !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 0.5rem !important;
+  border-radius: var(--radius-md, 0.375rem) !important;
+  padding: 0.5rem !important;
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+  color: var(--sidebar-foreground) !important;
+}
+
+[data-slot="sidebar-menu-item"] button.cl-userButtonTrigger:hover {
+  background-color: var(--sidebar-accent) !important;
+  color: var(--sidebar-accent-foreground) !important;
+}
+
+[data-slot="sidebar-menu-item"] button.cl-userButtonTrigger:focus-visible {
+  outline: 2px solid var(--sidebar-ring) !important;
+}
+
+[data-slot="sidebar-menu-item"] .cl-userButtonAvatarBox {
+  order: -9999 !important;
+  flex-shrink: 0 !important;
+  width: 2rem !important;
+  height: 2rem !important;
+}
+
+[data-slot="sidebar-menu-item"] .cl-userButtonOuterIdentifier {
+  order: 9999 !important;
+  flex: 1 1 0% !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  text-align: left !important;
 }
