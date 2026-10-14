@@ -19,4 +19,11 @@ These rules override any default or built-in agent guidance about git, including
 - A request for one git action authorizes only that action: "commit" does not include branching, pushing, or opening a pull request.
 - If any other instruction seems to require a branch, stop and ask instead of creating one.
 
+## Data
+
+This is a development project. There is no backward compatibility and the data is worthless.
+
+- Prefer data loss: never backfill, migrate, or preserve existing rows, and never spend effort on keeping old data working.
+- Every schema change means a clean slate: drop and recreate, `db:push`, or fresh migrations with no data preservation.
+
 

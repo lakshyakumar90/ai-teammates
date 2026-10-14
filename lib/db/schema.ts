@@ -1,2 +1,21 @@
-// Define and export your PostgreSQL tables here using drizzle-orm/pg-core.
-export {};
+import { index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { nanoid } from "nanoid";
+
+export const bots = pgTable(
+  "bots",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    userId: text("user_id").notNull(),
+    name: text("name").notNull(),
+    avatar: text("avatar")
+      .notNull()
+      .$defaultFn(() => nanoid()),
+    job: text("job").notNull(),
+    instructions: text("instructions"),
+    sandboxId: text("sandbox_id"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [index("bots_user_id_idx").on(table.userId)],
+);
