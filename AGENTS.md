@@ -68,3 +68,38 @@ thing:
 Only JavaScript and the HTTP API have a pre-10 form. The other six cores were
 released in 2026 and never had one, so any older-looking PHP, Python, Rust, Go,
 Dart or C# API attributed to DiceBear is invented rather than outdated.
+
+## Forms
+
+Stack: drizzle-zod insert schema → server action → react-hook-form +
+zodResolver dialog form → toast. See `lib/db/schema.ts`, `actions/bot.ts`,
+`components/bot-dialog.tsx` for the reference implementation.
+
+- Derive the insert schema from the table with `createInsertSchema` in
+  `lib/db/schema.ts` (drizzle-zod). Refine required strings there
+  (`min`/`max`); leave server-managed columns to `.omit()` at each use site.
+- Never trust the client: the server action (`actions/*.ts`, `"use server"`)
+  checks `auth()` first, takes `userId` from Clerk server-side (never from the
+  form), re-validates input with the insert schema minus server-managed columns
+  (`id`, `sandboxId`, `createdAt`), then inserts with
+  `db.insert(table).values(data).returning()`.
+- The client form schema is the insert schema `.omit()`-ed down to what the
+  form collects (plus anything managed outside the form, e.g. a shuffled
+  avatar seed merged in `onSubmit`). Validate with `zodResolver`.
+- Compose with `FieldGroup` + `Field` + `FieldLabel` + `Input`/`Textarea` +
+  `FieldError`. Wire `data-invalid` on `Field`, `aria-invalid` on the control,
+  and `errors={[errors.x]}` on `FieldError`. Render server failures in a
+  bare `FieldError`.
+- Option sets of 2–7 choices use a single-select `ToggleGroup` bound to the
+  field value (`value` + `onValueChange` → `setValue`), not buttons with
+  manual active state.
+- The submit `Button` composes `Spinner` (`data-icon`) + `disabled` while
+  pending.
+- Dialogs own their open state, take the trigger as `children` rendered via
+  `DialogTrigger render={children}`, always include `DialogTitle`, and put
+  actions in `DialogFooter` (`DialogClose` for cancel).
+- Feedback uses the project's mounted toast system: `toast` from
+  `@/components/ui/toast` (Base UI, already in the layout with a bottom-right
+  viewport — do not add sonner). Call
+  `toast.add({ title, description, type: "success" })` after the mutation,
+  then `router.refresh()`.
