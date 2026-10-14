@@ -1,19 +1,22 @@
-import { Button } from "@/components/ui/button"
+import { UserButton } from "@clerk/nextjs"
+import { auth } from "@clerk/nextjs/server"
 
-export default function Page() {
+export default async function Page() {
+  await auth.protect()
+
   return (
-    <div className="flex min-h-svh p-6">
-      <div className="flex max-w-md min-w-0 flex-col gap-4 text-sm leading-loose">
-        <div>
-          <h1 className="font-medium">Project ready!</h1>
-          <p>You may now add components and start building.</p>
-          <p>We&apos;ve already added the button component for you.</p>
-          <Button className="mt-2">Button</Button>
-        </div>
-        <div className="font-mono text-xs text-muted-foreground">
-          (Press <kbd>d</kbd> to toggle dark mode)
-        </div>
-      </div>
-    </div>
+    <main className="flex min-h-svh flex-col p-6">
+      <header className="flex items-center justify-between">
+        <span className="font-medium">AI Teammates</span>
+        <UserButton />
+      </header>
+      <section className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center gap-3">
+        <p className="text-sm text-muted-foreground">Workspace</p>
+        <h1 className="text-3xl font-semibold tracking-tight">Project ready</h1>
+        <p className="text-muted-foreground">
+          You&apos;re signed in. Your AI teammate workspace is ready to build.
+        </p>
+      </section>
+    </main>
   )
 }
