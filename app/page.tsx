@@ -1,5 +1,17 @@
 import { UserButton } from "@clerk/nextjs"
 import { auth } from "@clerk/nextjs/server"
+import { PlusIcon } from "lucide-react"
+import { nanoid } from "nanoid"
+import { ChatAvatar } from "@/components/chat-avatar"
+import { Button } from "@/components/ui/button"
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty"
 
 export default async function Page() {
   await auth.protect()
@@ -10,13 +22,24 @@ export default async function Page() {
         <span className="font-medium">AI Teammates</span>
         <UserButton />
       </header>
-      <section className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center gap-3">
-        <p className="text-sm text-muted-foreground">Workspace</p>
-        <h1 className="text-3xl font-semibold tracking-tight">Project ready</h1>
-        <p className="text-muted-foreground">
-          You&apos;re signed in. Your AI teammate workspace is ready to build.
-        </p>
-      </section>
+      <Empty>
+        <EmptyHeader>
+          <EmptyMedia>
+            <ChatAvatar seed={nanoid()} className="size-10 rounded-full" />
+          </EmptyMedia>
+          <EmptyTitle>Meet your first bot</EmptyTitle>
+          <EmptyDescription>
+            Every bot gets its own personality, memory, and face. Spin one up
+            and start the conversation.
+          </EmptyDescription>
+        </EmptyHeader>
+        <EmptyContent>
+          <Button variant="secondary">
+            <PlusIcon data-icon="inline-start" />
+            Create a new bot
+          </Button>
+        </EmptyContent>
+      </Empty>
     </main>
   )
 }
