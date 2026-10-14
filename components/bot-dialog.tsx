@@ -53,8 +53,20 @@ const botFormSchema = insertBotSchema.omit({
 
 type BotFormValues = z.infer<typeof botFormSchema>;
 
-export function BotDialog({ children }: { children: React.ReactElement }) {
-  const [open, setOpen] = React.useState(false);
+export function BotDialog({
+  children,
+  open: controlledOpen,
+  onOpenChange,
+  nativeButton = true,
+}: {
+  children?: React.ReactElement;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  nativeButton?: boolean;
+}) {
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const handleOpenChange = onOpenChange ?? setUncontrolledOpen;
   const [faceSeed, setFaceSeed] = React.useState(() => nanoid());
   const [serverError, setServerError] = React.useState<string | null>(null);
   const router = useRouter();
@@ -80,7 +92,7 @@ export function BotDialog({ children }: { children: React.ReactElement }) {
         description: `${values.name} is ready to chat.`,
         type: "success",
       });
-      setOpen(false);
+      handleOpenChange(false);
       form.reset();
       setFaceSeed(nanoid());
       router.refresh();
@@ -90,8 +102,10 @@ export function BotDialog({ children }: { children: React.ReactElement }) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={children} />
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      {children ? (
+        <DialogTrigger render={children} nativeButton={nativeButton} />
+      ) : null}
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>New bot</DialogTitle>
