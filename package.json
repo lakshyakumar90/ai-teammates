@@ -19,6 +19,7 @@
     "@ai-sdk/google": "^4.0.96",
     "@ai-sdk/groq": "^4.0.61",
     "@ai-sdk/openai-compatible": "^3.0.69",
+    "@ai-sdk/otel": "1.0.141",
     "@ai-sdk/react": "^4.0.145",
     "@ai-sdk/xai": "^5.0.22",
     "@base-ui/react": "^1.9.0",
@@ -31,6 +32,7 @@
     "@neon/env": "^1.6.2",
     "@neondatabase/serverless": "^1.2.0",
     "@shadcn/react": "^0.3.1",
+    "@trigger.dev/sdk": "4.7.4",
     "ai": "^7.0.141",
     "class-variance-authority": "^0.7.1",
     "cmdk": "^1.1.1",
@@ -60,6 +62,7 @@
   "devDependencies": {
     "@next/env": "16.4.0",
     "@tailwindcss/postcss": "^4",
+    "@trigger.dev/build": "4.7.4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

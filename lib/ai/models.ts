@@ -1,5 +1,4 @@
-import "server-only"
-
+// Shared by the Next.js server and the Trigger.dev worker; client imports must be type-only.
 import { google } from "@ai-sdk/google"
 import { groq } from "@ai-sdk/groq"
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible"

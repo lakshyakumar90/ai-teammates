@@ -1,6 +1,12 @@
 "use client"
 
 import { useChat } from "@ai-sdk/react"
+import {
+  useLoadTranscript,
+  useTriggerChatTransport,
+} from "@trigger.dev/sdk/chat/react"
+import type { TriggerChatTransport } from "@trigger.dev/sdk/chat"
+import type { UIMessage } from "ai"
 import { CheckIcon, ChevronDownIcon } from "lucide-react"
 import { useState } from "react"
 
@@ -47,6 +53,12 @@ import { DropdownMenuGroup } from "@/components/ui/dropdown-menu"
 import { FieldError } from "@/components/ui/field"
 import { Spinner } from "@/components/ui/spinner"
 import type { ModelId, ModelOption } from "@/lib/ai/models"
+import {
+  loadChatTranscript,
+  mintChatAccessToken,
+  startChatSession,
+} from "@/actions/chat"
+import type { chatAgent } from "@/trigger/chat"
 
 function ComposerAttachments() {
   const attachments = usePromptInputAttachments()
@@ -88,14 +100,70 @@ function ComposerSubmit({
   )
 }
 
-export function Chat({
-  chatId,
-  defaultModelId,
-  modelOptions,
-}: {
+type ChatProps = {
   chatId: string
   defaultModelId: ModelId
   modelOptions: ModelOption[]
+}
+
+export function Chat(props: ChatProps) {
+  const transport = useTriggerChatTransport<typeof chatAgent>({
+    task: "chat-agent",
+    accessToken: ({ chatId }) => mintChatAccessToken(chatId),
+    startSession: ({ chatId, clientData }) =>
+      startChatSession({ chatId, clientData }),
+    clientData: { modelId: props.defaultModelId },
+  })
+  const transcript = useLoadTranscript(
+    props.chatId,
+    async ({ chatId }) => {
+      const session = await transport.start(chatId)
+      // Let the server check for an in-flight turn when reconnecting after a reload.
+      transport.setSession(chatId, {
+        publicAccessToken: session.publicAccessToken,
+      })
+      return loadChatTranscript({ chatId })
+    },
+    { transport }
+  )
+
+  if (transcript.isLoading)
+    return (
+      <div
+        role="status"
+        className="flex flex-1 items-center justify-center gap-2"
+      >
+        <Spinner />
+        <span className="sr-only">Loading conversation</span>
+      </div>
+    )
+  if (transcript.error)
+    return (
+      <div role="alert" className="p-4">
+        <FieldError>
+          Couldn&apos;t load this conversation. Refresh the page to retry.
+        </FieldError>
+      </div>
+    )
+
+  return (
+    <ChatView
+      {...props}
+      transport={transport}
+      initialMessages={transcript.messages}
+    />
+  )
+}
+
+function ChatView({
+  chatId,
+  defaultModelId,
+  modelOptions,
+  transport,
+  initialMessages,
+}: ChatProps & {
+  transport: TriggerChatTransport
+  initialMessages: UIMessage[]
 }) {
   const [input, setInput] = useState("")
   const [selectedModelId, setModelId] = useState<ModelId>(defaultModelId)
@@ -105,9 +173,23 @@ export function Chat({
     modelOptions.find((model) => model.id === selectedModelId) ??
     modelOptions.find((model) => model.id === defaultModelId)!
   const modelId = selectedModel.id
-  const { messages, sendMessage, status, stop, error, regenerate } = useChat({
+  const {
+    messages,
+    sendMessage,
+    status,
+    stop: stopLocal,
+    error,
+    regenerate,
+  } = useChat({
     id: chatId,
+    transport,
+    messages: initialMessages,
+    resume: initialMessages.length > 0,
   })
+  const stop = () => {
+    void stopLocal()
+    void transport.stopGeneration(chatId)
+  }
   const pending = status === "submitted" || status === "streaming"
   const providers = [...new Set(modelOptions.map((model) => model.provider))]
   const lastMessage = messages.at(-1)
@@ -191,7 +273,7 @@ export function Chat({
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  if (!pending) void regenerate({ body: { modelId } })
+                  if (!pending) void regenerate({ metadata: { modelId } })
                 }}
               >
                 Retry
@@ -222,7 +304,7 @@ export function Chat({
             setAttachmentError(undefined)
             void sendMessage(
               { text: text.trim(), files },
-              { body: { modelId } }
+              { metadata: { modelId } }
             )
             setInput("")
           }}

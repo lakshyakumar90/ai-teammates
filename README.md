@@ -8,6 +8,7 @@ Configure the providers you want to use in `.env.local`, then restart `pnpm dev`
 GOOGLE_GENERATIVE_AI_API_KEY=your-google-key
 OPENROUTER_API_KEY=your-openrouter-key
 GROQ_API_KEY=your-groq-key
+TRIGGER_SECRET_KEY=your-trigger-development-key
 OLLAMA_BASE_URL=http://127.0.0.1:11434/v1
 OLLAMA_MODEL=qwen3:4b
 ```
@@ -18,16 +19,24 @@ Ollama use `@ai-sdk/openai-compatible`; Groq uses `@ai-sdk/groq`.
 
 For local Ollama, run `ollama serve` and `ollama pull qwen3:4b` (or pull the
 model named in `OLLAMA_MODEL`). `OLLAMA_API_KEY` is optional for an authenticated
-Ollama endpoint. The base URL must include `/v1` and be reachable from the Next.js
-server; on a remote deployment, localhost refers to the deployment server.
+Ollama endpoint. The base URL must include `/v1` and be reachable from the
+Trigger.dev worker; on a remote deployment, localhost refers to the worker.
 
-Messages are held in client memory and reset when you leave or reload the chat.
+Chat runs as `chatAgent` in `trigger/chat.ts`. In a second terminal, run
+`pnpm dlx trigger.dev@4.7.4 dev start --env-file .env.local` alongside `pnpm dev`.
+Set the same provider variables in the Trigger.dev environment when deploying.
+The worker must be able to reach Ollama if you select a local model.
+
+Trigger.dev's default transcript storage persists messages by the existing chat ID.
+Opening a chat loads that transcript and reconnects to an in-progress response.
+Session creation, token refresh, and transcript reads all check chat ownership.
 Image uploads are enabled only for models marked as supporting images; text-only
 models reject conversation histories containing attachments.
 
 Provider settings, available models, labels, and image capabilities are configured
-in the server-only `lib/ai/models.ts`. Add a registry entry to expose another model
-in the picker; provider instances and credentials stay on the server.
+in `lib/ai/models.ts`, shared by the Next.js server and Trigger.dev worker.
+Add a registry entry to expose another model in the picker; the client receives
+only serializable model options, never provider instances or credentials.
 
 This is a Next.js template with shadcn/ui.
 
