@@ -1,13 +1,14 @@
 import "server-only"
 
-import { Daytona, DaytonaNotFoundError } from "@daytona/sdk"
+import { DaytonaNotFoundError } from "@daytona/sdk"
+import { createDaytonaClient } from "./daytona-client"
 
 export function createBotSandbox(botId: string) {
-  return new Daytona().create({ name: `bot-${botId}` })
+  return createDaytonaClient().create({ name: `bot-${botId}` })
 }
 
 export async function deleteBotSandbox(sandboxId: string) {
-  const daytona = new Daytona()
+  const daytona = createDaytonaClient()
   try {
     const sandbox = await daytona.get(sandboxId)
     await daytona.delete(sandbox)

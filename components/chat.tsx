@@ -6,7 +6,8 @@ import {
   useTriggerChatTransport,
 } from "@trigger.dev/sdk/chat/react"
 import type { TriggerChatTransport } from "@trigger.dev/sdk/chat"
-import type { UIMessage } from "ai"
+import { getToolName, isToolUIPart, type UIMessage } from "ai"
+import Image from "next/image"
 import { CheckIcon, ChevronDownIcon } from "lucide-react"
 import { useState } from "react"
 
@@ -49,6 +50,14 @@ import {
   usePromptInputAttachments,
 } from "@/components/ai-elements/prompt-input"
 import { Button } from "@/components/ui/button"
+import {
+  Tool,
+  ToolContent,
+  ToolHeader,
+  ToolInput,
+  ToolOutput,
+} from "@/components/ai-elements/tool"
+import { isVisibleMessagePart, screenImageUrl } from "@/lib/ai/tool-display"
 import { DropdownMenuGroup } from "@/components/ui/dropdown-menu"
 import { FieldError } from "@/components/ui/field"
 import { Spinner } from "@/components/ui/spinner"
@@ -217,12 +226,7 @@ function ChatView({
           className="gap-4 px-3 py-4 sm:px-4"
         >
           {messages
-            .filter((message) =>
-              message.parts.some(
-                (part) =>
-                  part.type === "file" || (part.type === "text" && part.text)
-              )
-            )
+            .filter((message) => message.parts.some(isVisibleMessagePart))
             .map((message) => (
               <Message from={message.role} key={message.id}>
                 <span className="sr-only">
@@ -230,6 +234,55 @@ function ChatView({
                 </span>
                 <MessageContent>
                   {message.parts.map((part, index) => {
+                    if (!isVisibleMessagePart(part)) return null
+                    if (isToolUIPart(part)) {
+                      const name = getToolName(part)
+                      const output = "output" in part ? part.output : undefined
+                      const imageUrl =
+                        name === "showScreen"
+                          ? screenImageUrl(output)
+                          : undefined
+                      return (
+                        <Tool
+                          key={part.toolCallId}
+                          defaultOpen={name === "showScreen"}
+                        >
+                          <ToolHeader
+                            type={`tool-${name}`}
+                            state={part.state}
+                            title={name
+                              .replace(/([A-Z])/g, " $1")
+                              .replace(/^./, (letter) => letter.toUpperCase())}
+                          />
+                          <ToolContent>
+                            {name !== "showScreen" && (
+                              <ToolInput input={part.input ?? {}} />
+                            )}
+                            <ToolOutput
+                              output={
+                                name === "showScreen" ? (
+                                  imageUrl ? (
+                                    <Image
+                                      src={imageUrl}
+                                      alt="Current bot sandbox screen"
+                                      width={1280}
+                                      height={720}
+                                      unoptimized
+                                      className="h-auto max-w-full rounded-md"
+                                    />
+                                  ) : undefined
+                                ) : (
+                                  output
+                                )
+                              }
+                              errorText={
+                                "errorText" in part ? part.errorText : undefined
+                              }
+                            />
+                          </ToolContent>
+                        </Tool>
+                      )
+                    }
                     if (part.type === "text") {
                       return message.role === "user" ? (
                         <p key={index} className="whitespace-pre-wrap">

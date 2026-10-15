@@ -5,7 +5,7 @@ import { ModelConfigurationError } from "./models"
 
 export class ChatRequestError extends Error {}
 
-function sanitizeDetail(value: unknown) {
+export function sanitizeDetail(value: unknown) {
   if (typeof value !== "string") return ""
   let detail = value
   for (const name of [
@@ -14,6 +14,7 @@ function sanitizeDetail(value: unknown) {
     "OPENROUTER_API_KEY",
     "OLLAMA_API_KEY",
     "TRIGGER_SECRET_KEY",
+    "DAYTONA_API_KEY",
   ]) {
     const secret = process.env[name]
     if (secret) detail = detail.replaceAll(secret, "[redacted]")

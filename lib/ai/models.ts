@@ -13,9 +13,13 @@ const ollama = createOpenAICompatible({
   name: "ollama",
   baseURL: process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434/v1",
   apiKey: process.env.OLLAMA_API_KEY,
+  supportsMultiPartToolContent: true,
 })
 
 const ollamaModelId = process.env.OLLAMA_MODEL || "qwen3:4b"
+const ollamaSupportsImages = process.env.OLLAMA_SUPPORTS_IMAGES
+  ? process.env.OLLAMA_SUPPORTS_IMAGES === "true"
+  : /^ministral-3(?::|$)/.test(ollamaModelId)
 
 // Add entries here; only serializable metadata is sent to the chat UI.
 export const models = {
@@ -85,7 +89,7 @@ export const models = {
   "ollama-local": {
     label: ollamaModelId,
     provider: "Ollama",
-    supportsImages: false,
+    supportsImages: ollamaSupportsImages,
     apiKeyEnv: null,
     model: ollama(ollamaModelId),
   },

@@ -5,7 +5,14 @@
 Set `DAYTONA_API_KEY` in `.env.local` and restart Next.js. Creating a bot creates
 a Daytona sandbox and saves its ID in `bots.sandboxId`. Deleting the bot deletes
 its sandbox first; if Daytona fails, the bot remains so deletion can be retried.
-Daytona starts sandboxes as part of creation. The app runs no commands in them.
+Daytona starts sandboxes as part of creation. Chat tools run commands, read/write
+files, and control the bot's sandbox desktop. The worker needs `DAYTONA_API_KEY`.
+Stopped sandboxes resume on the first tool call; desktop services start lazily.
+Desktop interaction needs an image-capable model. `viewScreen` observations stay
+hidden in chat; `showScreen` displays a screenshot when the user asks to see it.
+Local Ministral 3 models are marked as vision-capable. For another Ollama model,
+set `OLLAMA_SUPPORTS_IMAGES=true` or `false` to match its `/api/show` capabilities,
+then restart both Next.js and the Trigger.dev worker.
 
 Bot role presets fill the working instructions in the bot form. The chat agent
 reads the saved bot name, job, instructions, and sandbox ID on each turn.

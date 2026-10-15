@@ -1,11 +1,10 @@
 import { chat, defaultStorage } from "@trigger.dev/sdk/ai"
 import { z } from "zod"
-import { validateUIMessages } from "ai"
-import { asc, eq } from "drizzle-orm"
+import { stepCountIs, validateUIMessages } from "ai"
 
 import { buildBotInstructions } from "../lib/ai/bot-instructions"
-import { db } from "../lib/db/client"
-import { chatMembers } from "../lib/db/schema"
+import { getChatBot } from "../lib/ai/bot-context"
+import { createComputerTools, getChatSandbox } from "../lib/ai/computer-tools"
 import { getModel, modelOptions } from "../lib/ai/models"
 import { ChatRequestError, chatErrorMessage } from "../lib/ai/chat-error"
 
@@ -13,9 +12,18 @@ export const chatAgent = chat.agent({
   id: "chat-agent",
   storage: defaultStorage,
   clientDataSchema: z.object({ modelId: z.string() }),
-  onValidateMessages: async ({ messages }) => {
+  tools: ({ chatId, clientData }) =>
+    createComputerTools(
+      () => getChatSandbox(chatId),
+      modelOptions.find(({ id }) => id === clientData?.modelId)
+        ?.supportsImages ?? false
+    ),
+  onValidateMessages: async ({ chatId, messages }) => {
     try {
-      return await validateUIMessages({ messages })
+      return await validateUIMessages({
+        messages,
+        tools: createComputerTools(() => getChatSandbox(chatId), false),
+      })
     } catch {
       throw new ChatRequestError(
         "The message could not be validated. Refresh the chat and retry."
@@ -25,7 +33,7 @@ export const chatAgent = chat.agent({
   uiMessageStreamOptions: {
     onError: chatErrorMessage,
   },
-  run: async ({ chatId, messages, clientData, signal, streamText }) => {
+  run: async ({ chatId, messages, tools, clientData, signal, streamText }) => {
     if (!clientData) throw new ChatRequestError("Missing model selection")
     const option = modelOptions.find(({ id }) => id === clientData.modelId)
     if (!option)
@@ -50,18 +58,13 @@ export const chatAgent = chat.agent({
       )
     }
     try {
-      const membership = await db.query.chatMembers.findFirst({
-        where: eq(chatMembers.chatId, chatId),
-        orderBy: [asc(chatMembers.joinedAt), asc(chatMembers.botId)],
-        with: { bot: true },
-      })
-      if (!membership) {
-        throw new ChatRequestError("This chat no longer has a bot.")
-      }
+      const bot = await getChatBot(chatId)
       return streamText({
         model: getModel(clientData.modelId),
-        instructions: buildBotInstructions(membership.bot),
+        instructions: buildBotInstructions(bot),
         messages,
+        tools,
+        stopWhen: stepCountIs(20),
         abortSignal: signal,
         maxRetries: 0,
       })
