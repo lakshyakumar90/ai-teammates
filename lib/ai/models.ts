@@ -104,7 +104,9 @@ export type ModelOption = (typeof modelOptions)[number]
 
 export class ModelConfigurationError extends Error {
   constructor(variable: string) {
-    super(`Set ${variable} in .env.local and restart the development server.`)
+    super(
+      `Set ${variable} for the Next.js server and Trigger.dev worker, then restart both.`
+    )
     this.name = "ModelConfigurationError"
   }
 }

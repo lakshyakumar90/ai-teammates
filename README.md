@@ -26,6 +26,8 @@ Chat runs as `chatAgent` in `trigger/chat.ts`. In a second terminal, run
 `pnpm dlx trigger.dev@4.7.4 dev start --env-file .env.local` alongside `pnpm dev`.
 Set the same provider variables in the Trigger.dev environment when deploying.
 The worker must be able to reach Ollama if you select a local model.
+After changing `.env.local`, restart the Trigger.dev dev command as well as Next.js;
+an already-running worker keeps its previous provider/model environment.
 
 Trigger.dev's default transcript storage persists messages by the existing chat ID.
 Opening a chat loads that transcript and reconnects to an in-progress response.

@@ -106,12 +106,18 @@ type ChatProps = {
   modelOptions: ModelOption[]
 }
 
+function unwrapChatAction<T>(result: { data: T } | { error: string }) {
+  if ("error" in result) throw new Error(result.error)
+  return result.data
+}
+
 export function Chat(props: ChatProps) {
   const transport = useTriggerChatTransport<typeof chatAgent>({
     task: "chat-agent",
-    accessToken: ({ chatId }) => mintChatAccessToken(chatId),
-    startSession: ({ chatId, clientData }) =>
-      startChatSession({ chatId, clientData }),
+    accessToken: async ({ chatId }) =>
+      unwrapChatAction(await mintChatAccessToken(chatId)),
+    startSession: async ({ chatId, clientData }) =>
+      unwrapChatAction(await startChatSession({ chatId, clientData })),
     clientData: { modelId: props.defaultModelId },
   })
   const transcript = useLoadTranscript(
@@ -122,7 +128,7 @@ export function Chat(props: ChatProps) {
       transport.setSession(chatId, {
         publicAccessToken: session.publicAccessToken,
       })
-      return loadChatTranscript({ chatId })
+      return unwrapChatAction(await loadChatTranscript({ chatId }))
     },
     { transport }
   )
@@ -141,7 +147,8 @@ export function Chat(props: ChatProps) {
     return (
       <div role="alert" className="p-4">
         <FieldError>
-          Couldn&apos;t load this conversation. Refresh the page to retry.
+          {transcript.error.message ||
+            "Couldn't load this conversation. Refresh the page to retry."}
         </FieldError>
       </div>
     )

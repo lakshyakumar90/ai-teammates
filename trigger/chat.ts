@@ -3,20 +3,34 @@ import { z } from "zod"
 import { validateUIMessages } from "ai"
 
 import { getModel, modelOptions } from "../lib/ai/models"
+import { ChatRequestError, chatErrorMessage } from "../lib/ai/chat-error"
 
 export const chatAgent = chat.agent({
   id: "chat-agent",
   storage: defaultStorage,
   clientDataSchema: z.object({ modelId: z.string() }),
-  onValidateMessages: ({ messages }) => validateUIMessages({ messages }),
+  onValidateMessages: async ({ messages }) => {
+    try {
+      return await validateUIMessages({ messages })
+    } catch {
+      throw new ChatRequestError(
+        "The message could not be validated. Refresh the chat and retry."
+      )
+    }
+  },
   uiMessageStreamOptions: {
-    onError: () =>
-      "The selected provider couldn't respond. Check its credentials, model availability, or connection and retry.",
+    onError: chatErrorMessage,
   },
   run: async ({ messages, clientData, signal, streamText }) => {
-    if (!clientData) throw new Error("Missing model selection")
-    const model = getModel(clientData.modelId)
-    const option = modelOptions.find(({ id }) => id === clientData.modelId)!
+    if (!clientData) throw new ChatRequestError("Missing model selection")
+    const option = modelOptions.find(({ id }) => id === clientData.modelId)
+    if (!option)
+      throw new ChatRequestError(
+        "This model is no longer available. Select another model."
+      )
+    chat.setUIMessageStreamOptions({
+      onError: (error) => chatErrorMessage(error, option.provider),
+    })
     if (
       !option.supportsImages &&
       messages.some(
@@ -27,10 +41,19 @@ export const chatAgent = chat.agent({
           )
       )
     ) {
-      throw new Error(
+      throw new ChatRequestError(
         "This model only supports text. Choose an image-capable model for conversations with attachments."
       )
     }
-    return streamText({ model, messages, abortSignal: signal })
+    try {
+      return streamText({
+        model: getModel(clientData.modelId),
+        messages,
+        abortSignal: signal,
+        maxRetries: 0,
+      })
+    } catch (error) {
+      throw new ChatRequestError(chatErrorMessage(error))
+    }
   },
 })
