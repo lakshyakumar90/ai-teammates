@@ -1,5 +1,13 @@
 # Next.js template
 
+## Gemini chat
+
+Set `GOOGLE_GENERATIVE_AI_API_KEY` in `.env.local` to your Google AI Studio API
+key. Open an existing chat, select a Gemini model, and send a message. Messages
+are held in client memory and reset when you leave or reload the chat.
+
+Available models and their labels are configured in `lib/ai/models.ts`.
+
 This is a Next.js template with shadcn/ui.
 
 ## Adding components
