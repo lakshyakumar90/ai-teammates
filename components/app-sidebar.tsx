@@ -5,7 +5,7 @@ import { UserButton } from "@clerk/nextjs";
 import { formatDistanceToNow } from "date-fns";
 import { PlusIcon, SearchIcon, UsersIcon } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 import { BotDialog } from "@/components/bot-dialog";
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,11 @@ export function AppSidebar({ chats }: { chats: ChatWithBot[] }) {
   const [botDialogOpen, setBotDialogOpen] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
   const router = useRouter();
+  const params = useParams();
+  const routeChatId = params.chatId;
+  const activeChatId = Array.isArray(routeChatId)
+    ? routeChatId[0]
+    : routeChatId;
 
   React.useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -108,6 +113,7 @@ export function AppSidebar({ chats }: { chats: ChatWithBot[] }) {
                         size="lg"
                         className="h-auto cursor-pointer group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-0!"
                         render={<Link href={`/chats/${chat.id}`} />}
+                        isActive={chat.id === activeChatId}
                       >
                         <ChatAvatar
                           seed={bot?.avatar ?? chat.id}

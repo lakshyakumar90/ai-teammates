@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "@clerk/nextjs/server";
+import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { z } from "zod";
 
@@ -33,4 +34,78 @@ export async function createBot(input: CreateBotInput) {
     db.insert(chatMembers).values({ chatId, botId }),
   ]);
   return { bot: botRows[0], chat: chatRows[0] };
+}
+
+const updateBotSchema = insertBotSchema
+  .omit({
+    userId: true,
+    sandboxId: true,
+    createdAt: true,
+  })
+  .extend({
+    id: z.string().min(1),
+  });
+
+export type UpdateBotInput = z.infer<typeof updateBotSchema>;
+
+export async function updateBot(input: UpdateBotInput) {
+  const { userId } = await auth();
+  if (!userId) {
+    throw new Error("Not authenticated");
+  }
+
+  const data = updateBotSchema.parse(input);
+  const [bot] = await db
+    .update(bots)
+    .set({
+      name: data.name,
+      job: data.job,
+      instructions: data.instructions,
+      avatar: data.avatar,
+    })
+    .where(and(eq(bots.id, data.id), eq(bots.userId, userId)))
+    .returning();
+  if (!bot) {
+    throw new Error("Bot not found");
+  }
+  return bot;
+}
+
+const deleteBotSchema = z.object({ id: z.string().min(1) });
+
+export async function deleteBot(input: z.infer<typeof deleteBotSchema>) {
+  const { userId } = await auth();
+  if (!userId) {
+    throw new Error("Not authenticated");
+  }
+
+  const data = deleteBotSchema.parse(input);
+
+  const memberships = await db
+    .select({ chatId: chatMembers.chatId })
+    .from(chatMembers)
+    .where(eq(chatMembers.botId, data.id));
+
+  const [bot] = await db
+    .delete(bots)
+    .where(and(eq(bots.id, data.id), eq(bots.userId, userId)))
+    .returning();
+  if (!bot) {
+    throw new Error("Bot not found");
+  }
+
+  // Drop chats left with no members so deleted bots vanish from the sidebar.
+  for (const { chatId } of memberships) {
+    const remaining = await db
+      .select({ chatId: chatMembers.chatId })
+      .from(chatMembers)
+      .where(eq(chatMembers.chatId, chatId))
+      .limit(1);
+    if (remaining.length === 0) {
+      await db
+        .delete(chats)
+        .where(and(eq(chats.id, chatId), eq(chats.userId, userId)));
+    }
+  }
+  return bot;
 }

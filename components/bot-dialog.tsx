@@ -8,7 +8,7 @@ import { nanoid } from "nanoid";
 import { useForm } from "react-hook-form";
 import type { z } from "zod";
 
-import { createBot } from "@/actions/bot";
+import { createBot, deleteBot, updateBot } from "@/actions/bot";
 import { ChatAvatar } from "@/components/chat-avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +21,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Field,
   FieldDescription,
@@ -53,64 +64,130 @@ const botFormSchema = insertBotSchema.omit({
 
 type BotFormValues = z.infer<typeof botFormSchema>;
 
+export type BotEdit = {
+  id: string;
+  name: string;
+  job: string;
+  instructions: string | null;
+  avatar: string;
+};
+
 export function BotDialog({
   children,
   open: controlledOpen,
   onOpenChange,
   nativeButton = true,
+  bot,
 }: {
   children?: React.ReactElement;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   nativeButton?: boolean;
+  bot?: BotEdit;
 }) {
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
   const open = controlledOpen ?? uncontrolledOpen;
   const handleOpenChange = onOpenChange ?? setUncontrolledOpen;
-  const [faceSeed, setFaceSeed] = React.useState(() => nanoid());
+  const [faceSeed, setFaceSeed] = React.useState(() => bot?.avatar ?? nanoid());
   const [serverError, setServerError] = React.useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
+  const [deleting, setDeleting] = React.useState(false);
   const router = useRouter();
 
   const form = useForm<BotFormValues>({
     resolver: zodResolver(botFormSchema),
     defaultValues: {
-      name: "Ada",
-      job: "Research assistant",
+      name: bot?.name ?? "Ada",
+      job: bot?.job ?? "Research assistant",
       instructions:
+        bot?.instructions ??
         "Answer briefly, cite sources, and ask before running anything destructive.",
     },
   });
   const job = form.watch("job");
   const errors = form.formState.errors;
 
+  function handleDialogOpenChange(next: boolean) {
+    if (!next) {
+      // Discard unsaved edits on close so reopening shows stored values.
+      if (bot) {
+        form.reset({
+          name: bot.name,
+          job: bot.job,
+          instructions: bot.instructions ?? "",
+        });
+        setFaceSeed(bot.avatar);
+      }
+      setServerError(null);
+    }
+    handleOpenChange(next);
+  }
+
   async function onSubmit(values: BotFormValues) {
     setServerError(null);
     try {
-      await createBot({ ...values, avatar: faceSeed });
-      toast.add({
-        title: "Bot created",
-        description: `${values.name} is ready to chat.`,
-        type: "success",
-      });
+      if (bot) {
+        await updateBot({ ...values, id: bot.id, avatar: faceSeed });
+        toast.add({
+          title: "Bot updated",
+          description: `${values.name} is up to date.`,
+          type: "success",
+        });
+      } else {
+        await createBot({ ...values, avatar: faceSeed });
+        toast.add({
+          title: "Bot created",
+          description: `${values.name} is ready to chat.`,
+          type: "success",
+        });
+        form.reset();
+        setFaceSeed(nanoid());
+      }
       handleOpenChange(false);
-      form.reset();
-      setFaceSeed(nanoid());
       router.refresh();
     } catch {
-      setServerError("Could not create the bot. Try again.");
+      setServerError(
+        bot ? "Could not update the bot. Try again." : "Could not create the bot. Try again.",
+      );
+    }
+  }
+
+  async function handleDelete() {
+    if (!bot) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      await deleteBot({ id: bot.id });
+      toast.add({
+        title: "Bot deleted",
+        description: `${bot.name} is gone.`,
+        type: "success",
+      });
+      setConfirmOpen(false);
+      handleOpenChange(false);
+      router.push("/");
+      router.refresh();
+    } catch {
+      setConfirmOpen(false);
+      setServerError("Could not delete the bot. Try again.");
+    } finally {
+      setDeleting(false);
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       {children ? (
         <DialogTrigger render={children} nativeButton={nativeButton} />
       ) : null}
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>New bot</DialogTitle>
+          <DialogTitle>{bot ? "Edit bot" : "New bot"}</DialogTitle>
           <DialogDescription>
-            Give it a face, a name, and a job to do.
+            {bot
+              ? "Update the face, name, and job."
+              : "Give it a face, a name, and a job to do."}
           </DialogDescription>
         </DialogHeader>
         <form
@@ -193,6 +270,43 @@ export function BotDialog({
             {serverError ? <FieldError>{serverError}</FieldError> : null}
           </FieldGroup>
           <DialogFooter>
+            {bot ? (
+              <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+                <AlertDialogTrigger
+                  render={
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      className="mr-auto"
+                    />
+                  }
+                >
+                  Delete
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete {bot.name}?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This permanently removes the bot and its chat
+                      memberships. This cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      variant="destructive"
+                      onClick={handleDelete}
+                      disabled={deleting}
+                    >
+                      {deleting ? (
+                        <Spinner data-icon="inline-start" />
+                      ) : null}
+                      Delete bot
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            ) : null}
             <DialogClose render={<Button type="button" variant="outline" />}>
               Cancel
             </DialogClose>
@@ -200,7 +314,7 @@ export function BotDialog({
               {form.formState.isSubmitting ? (
                 <Spinner data-icon="inline-start" />
               ) : null}
-              Create bot
+              {bot ? "Save changes" : "Create bot"}
             </Button>
           </DialogFooter>
         </form>
