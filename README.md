@@ -1,12 +1,33 @@
 # Next.js template
 
-## Gemini chat
+## AI chat
 
-Set `GOOGLE_GENERATIVE_AI_API_KEY` in `.env.local` to your Google AI Studio API
-key. Open an existing chat, select a Gemini model, and send a message. Messages
-are held in client memory and reset when you leave or reload the chat.
+Configure the providers you want to use in `.env.local`, then restart `pnpm dev`:
 
-Available models and their labels are configured in `lib/ai/models.ts`.
+```dotenv
+GOOGLE_GENERATIVE_AI_API_KEY=your-google-key
+OPENROUTER_API_KEY=your-openrouter-key
+GROQ_API_KEY=your-groq-key
+OLLAMA_BASE_URL=http://127.0.0.1:11434/v1
+OLLAMA_MODEL=qwen3:4b
+```
+
+Open an existing chat and choose a model from Google Gemini, OpenRouter, Groq,
+or Ollama. Only the selected cloud provider needs an API key. OpenRouter and
+Ollama use `@ai-sdk/openai-compatible`; Groq uses `@ai-sdk/groq`.
+
+For local Ollama, run `ollama serve` and `ollama pull qwen3:4b` (or pull the
+model named in `OLLAMA_MODEL`). `OLLAMA_API_KEY` is optional for an authenticated
+Ollama endpoint. The base URL must include `/v1` and be reachable from the Next.js
+server; on a remote deployment, localhost refers to the deployment server.
+
+Messages are held in client memory and reset when you leave or reload the chat.
+Image uploads are enabled only for models marked as supporting images; text-only
+models reject conversation histories containing attachments.
+
+Provider settings, available models, labels, and image capabilities are configured
+in the server-only `lib/ai/models.ts`. Add a registry entry to expose another model
+in the picker; provider instances and credentials stay on the server.
 
 This is a Next.js template with shadcn/ui.
 

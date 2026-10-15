@@ -1,6 +1,7 @@
 import { ChatHeader } from "@/components/chat-header"
 import { Chat } from "@/components/chat"
 import { getChat } from "@/queries/chats"
+import { defaultModelId, modelOptions } from "@/lib/ai/models"
 
 export default async function ChatPage({
   params,
@@ -28,7 +29,12 @@ export default async function ChatPage({
         avatarSeed={bot.avatar}
         bot={bot}
       />
-      <Chat key={chatId} chatId={chatId} />
+      <Chat
+        key={chatId}
+        chatId={chatId}
+        defaultModelId={defaultModelId}
+        modelOptions={modelOptions}
+      />
     </div>
   )
 }
