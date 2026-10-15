@@ -7,6 +7,10 @@ a Daytona sandbox and saves its ID in `bots.sandboxId`. Deleting the bot deletes
 its sandbox first; if Daytona fails, the bot remains so deletion can be retried.
 Daytona starts sandboxes as part of creation. The app runs no commands in them.
 
+Bot role presets fill the working instructions in the bot form. The chat agent
+reads the saved bot name, job, instructions, and sandbox ID on each turn.
+Set `DATABASE_URL` in the Trigger.dev worker environment as well as Next.js.
+
 ## AI chat
 
 Configure the providers you want to use in `.env.local`, then restart `pnpm dev`:

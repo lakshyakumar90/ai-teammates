@@ -86,6 +86,9 @@ importers:
       embla-carousel-react:
         specifier: ^8.6.0
         version: 8.6.0(react@19.3.0)
+      import-in-the-middle:
+        specifier: 3.5.2
+        version: 3.5.2
       input-otp:
         specifier: ^1.5.0
         version: 1.5.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -119,6 +122,9 @@ importers:
       recharts:
         specifier: 3.8.0
         version: 3.8.0(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react-is@16.13.1)(react@19.3.0)(redux@5.0.1)
+      require-in-the-middle:
+        specifier: 8.0.1
+        version: 8.0.1
       server-only:
         specifier: ^0.0.1
         version: 0.0.1

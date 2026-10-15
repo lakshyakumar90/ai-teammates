@@ -1,7 +1,11 @@
 import { chat, defaultStorage } from "@trigger.dev/sdk/ai"
 import { z } from "zod"
 import { validateUIMessages } from "ai"
+import { asc, eq } from "drizzle-orm"
 
+import { buildBotInstructions } from "../lib/ai/bot-instructions"
+import { db } from "../lib/db/client"
+import { chatMembers } from "../lib/db/schema"
 import { getModel, modelOptions } from "../lib/ai/models"
 import { ChatRequestError, chatErrorMessage } from "../lib/ai/chat-error"
 
@@ -21,7 +25,7 @@ export const chatAgent = chat.agent({
   uiMessageStreamOptions: {
     onError: chatErrorMessage,
   },
-  run: async ({ messages, clientData, signal, streamText }) => {
+  run: async ({ chatId, messages, clientData, signal, streamText }) => {
     if (!clientData) throw new ChatRequestError("Missing model selection")
     const option = modelOptions.find(({ id }) => id === clientData.modelId)
     if (!option)
@@ -46,8 +50,17 @@ export const chatAgent = chat.agent({
       )
     }
     try {
+      const membership = await db.query.chatMembers.findFirst({
+        where: eq(chatMembers.chatId, chatId),
+        orderBy: [asc(chatMembers.joinedAt), asc(chatMembers.botId)],
+        with: { bot: true },
+      })
+      if (!membership) {
+        throw new ChatRequestError("This chat no longer has a bot.")
+      }
       return streamText({
         model: getModel(clientData.modelId),
+        instructions: buildBotInstructions(membership.bot),
         messages,
         abortSignal: signal,
         maxRetries: 0,

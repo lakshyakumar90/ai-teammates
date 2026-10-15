@@ -46,13 +46,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toast";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { insertBotSchema } from "@/lib/db/schema";
-
-const PRESETS = [
-  "Research assistant",
-  "Code reviewer",
-  "Writing editor",
-  "Tutor",
-] as const;
+import { botPresets } from "@/lib/bot-presets";
 
 const botFormSchema = insertBotSchema.omit({
   id: true,
@@ -98,10 +92,8 @@ export function BotDialog({
     resolver: zodResolver(botFormSchema),
     defaultValues: {
       name: bot?.name ?? "Ada",
-      job: bot?.job ?? "Research assistant",
-      instructions:
-        bot?.instructions ??
-        "Answer briefly, cite sources, and ask before running anything destructive.",
+      job: bot?.job ?? botPresets[0].job,
+      instructions: bot ? (bot.instructions ?? "") : botPresets[0].instructions,
     },
   });
   const job = form.watch("job");
@@ -147,7 +139,9 @@ export function BotDialog({
       router.refresh();
     } catch {
       setServerError(
-        bot ? "Could not update the bot. Try again." : "Could not create the bot. Try again.",
+        bot
+          ? "Could not update the bot. Try again."
+          : "Could not create the bot. Try again.",
       );
     }
   }
@@ -204,12 +198,21 @@ export function BotDialog({
                     shouldValidate: true,
                     shouldDirty: true,
                   });
+                  const preset = botPresets.find(
+                    ({ job }) => job === groupValue[0],
+                  );
+                  if (preset) {
+                    form.setValue("instructions", preset.instructions, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                    });
+                  }
                 }
               }}
             >
-              {PRESETS.map((preset) => (
-                <ToggleGroupItem key={preset} value={preset}>
-                  {preset}
+              {botPresets.map((preset) => (
+                <ToggleGroupItem key={preset.job} value={preset.job}>
+                  {preset.job}
                 </ToggleGroupItem>
               ))}
             </ToggleGroup>
@@ -287,8 +290,8 @@ export function BotDialog({
                   <AlertDialogHeader>
                     <AlertDialogTitle>Delete {bot.name}?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This permanently removes the bot and its chat
-                      memberships. This cannot be undone.
+                      This permanently removes the bot and its chat memberships.
+                      This cannot be undone.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -298,9 +301,7 @@ export function BotDialog({
                       onClick={handleDelete}
                       disabled={deleting}
                     >
-                      {deleting ? (
-                        <Spinner data-icon="inline-start" />
-                      ) : null}
+                      {deleting ? <Spinner data-icon="inline-start" /> : null}
                       Delete bot
                     </AlertDialogAction>
                   </AlertDialogFooter>
