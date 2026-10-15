@@ -1,5 +1,12 @@
 # Next.js template
 
+## Bot sandboxes
+
+Set `DAYTONA_API_KEY` in `.env.local` and restart Next.js. Creating a bot creates
+a Daytona sandbox and saves its ID in `bots.sandboxId`. Deleting the bot deletes
+its sandbox first; if Daytona fails, the bot remains so deletion can be retried.
+Daytona starts sandboxes as part of creation. The app runs no commands in them.
+
 ## AI chat
 
 Configure the providers you want to use in `.env.local`, then restart `pnpm dev`:
