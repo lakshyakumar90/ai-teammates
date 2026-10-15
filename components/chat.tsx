@@ -80,7 +80,7 @@ function ComposerSubmit({
     <PromptInputSubmit
       status={pending ? "streaming" : "ready"}
       type={pending ? "button" : "submit"}
-      variant="secondary"
+      variant="default"
       aria-label={pending ? "Stop response" : "Send message"}
       disabled={!pending && !input.trim() && !attachments.files.length}
       onClick={pending ? stop : undefined}
@@ -118,9 +118,15 @@ export function Chat({
       !lastMessage.parts.some((part) => part.type === "text" && part.text))
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <Conversation className="min-h-0" aria-label="Chat messages">
-        <ConversationContent className="gap-4 px-3 py-4 sm:px-4">
+    <div className="grid min-h-0 min-w-0 flex-1 grid-rows-[minmax(0,1fr)_auto] overflow-hidden">
+      <Conversation
+        className="min-h-0 min-w-0 overflow-hidden"
+        aria-label="Chat messages"
+      >
+        <ConversationContent
+          scrollClassName="min-h-0 overflow-y-auto overscroll-contain"
+          className="gap-4 px-3 py-4 sm:px-4"
+        >
           {messages
             .filter((message) =>
               message.parts.some(
@@ -184,8 +190,9 @@ export function Chat({
                 type="button"
                 variant="ghost"
                 size="sm"
-                disabled={pending}
-                onClick={() => void regenerate({ body: { modelId } })}
+                onClick={() => {
+                  if (!pending) void regenerate({ body: { modelId } })
+                }}
               >
                 Retry
               </Button>
@@ -193,6 +200,12 @@ export function Chat({
           </div>
         )}
         <PromptInput
+          onSubmitCapture={(event) => {
+            if (pending) {
+              event.preventDefault()
+              event.stopPropagation()
+            }
+          }}
           accept="image/*"
           multiple
           maxFiles={4}
@@ -218,7 +231,6 @@ export function Chat({
           <PromptInputBody>
             <PromptInputTextarea
               aria-label="Message"
-              disabled={pending}
               placeholder="What would you like to know?"
               value={input}
               onChange={(event) => setInput(event.currentTarget.value)}
@@ -234,7 +246,7 @@ export function Chat({
                       ? "Add images"
                       : "This model only supports text"
                   }
-                  disabled={pending || !selectedModel.supportsImages}
+                  disabled={!selectedModel.supportsImages}
                 />
                 <PromptInputActionMenuContent>
                   <DropdownMenuGroup>
@@ -250,7 +262,6 @@ export function Chat({
                   render={
                     <PromptInputButton
                       size="sm"
-                      disabled={pending}
                       aria-label={`Choose model: ${selectedModel.provider}, ${selectedModel.label}`}
                       className="max-w-48 min-w-0 sm:max-w-72"
                     />

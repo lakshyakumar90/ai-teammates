@@ -23,7 +23,7 @@ export default async function ChatPage({
   }
 
   return (
-    <div className="flex h-dvh min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+    <div className="flex h-dvh max-h-dvh min-h-0 min-w-0 shrink-0 flex-col overflow-hidden">
       <ChatHeader
         title={chat.name ?? bot.name}
         avatarSeed={bot.avatar}
