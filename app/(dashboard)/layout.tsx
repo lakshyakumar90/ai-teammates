@@ -1,4 +1,5 @@
 import { cookies } from "next/headers"
+import { auth } from "@clerk/nextjs/server"
 
 import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
@@ -9,6 +10,7 @@ export default async function DashboardLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  await auth.protect()
   const [chats, bots] = await Promise.all([getChats(), getBots()])
   const cookieStore = await cookies()
   const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false"

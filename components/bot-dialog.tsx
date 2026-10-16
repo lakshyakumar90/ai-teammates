@@ -160,7 +160,7 @@ export function BotDialog({
       });
       setConfirmOpen(false);
       handleOpenChange(false);
-      router.push("/");
+      router.push("/dashboard");
       router.refresh();
     } catch {
       setConfirmOpen(false);

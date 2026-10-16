@@ -246,7 +246,7 @@ export function GroupChatDialog({
                           })
                           setConfirmOpen(false)
                           ;(onOpenChange ?? setLocalOpen)(false)
-                          router.push("/")
+                          router.push("/dashboard")
                           router.refresh()
                         } catch {
                           setConfirmOpen(false)

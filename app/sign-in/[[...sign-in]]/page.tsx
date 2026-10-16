@@ -6,12 +6,12 @@ export default async function SignInPage() {
   const { userId } = await auth()
 
   if (userId) {
-    redirect("/")
+    redirect("/dashboard")
   }
 
   return (
     <div className="flex min-h-screen items-center justify-center">
-      <SignIn />
+      <SignIn fallbackRedirectUrl="/dashboard" signUpUrl="/sign-up" />
     </div>
   )
 }
