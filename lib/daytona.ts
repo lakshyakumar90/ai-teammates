@@ -2,9 +2,25 @@ import "server-only"
 
 import { DaytonaNotFoundError } from "@daytona/sdk"
 import { createDaytonaClient } from "./daytona-client"
+import { initializeBotMemory } from "./ai/bot-memory"
 
-export function createBotSandbox(botId: string) {
-  return createDaytonaClient().create({ name: `bot-${botId}` })
+export async function createBotSandbox(botId: string) {
+  const daytona = createDaytonaClient()
+  const sandbox = await daytona.create({ name: `bot-${botId}` })
+  try {
+    await initializeBotMemory(sandbox)
+    return sandbox
+  } catch (error) {
+    try {
+      await daytona.delete(sandbox)
+    } catch (cleanupError) {
+      throw new AggregateError(
+        [error, cleanupError],
+        "Failed to initialize bot memory and delete its sandbox"
+      )
+    }
+    throw error
+  }
 }
 
 export async function deleteBotSandbox(sandboxId: string) {

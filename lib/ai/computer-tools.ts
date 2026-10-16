@@ -19,8 +19,8 @@ const maxText = 32_000
 const truncate = (text: string) =>
   text.length > maxText ? `${text.slice(0, maxText)}\n[Output truncated]` : text
 
-export async function getChatSandbox(chatId: string) {
-  const bot = await getChatBot(chatId)
+export async function getChatSandbox(chatId: string, botId?: string) {
+  const bot = await getChatBot(chatId, botId)
   if (!bot.sandboxId)
     throw new ChatRequestError("This bot has no Daytona sandbox.")
   const sandbox = await createDaytonaClient().get(bot.sandboxId)

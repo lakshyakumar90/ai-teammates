@@ -1,4 +1,4 @@
-import { defineConfig } from "@trigger.dev/sdk";
+import { defineConfig } from "@trigger.dev/sdk"
 
 export default defineConfig({
   project: "proj_sssnetbqmvjbwyyailic",
@@ -19,4 +19,6 @@ export default defineConfig({
     },
   },
   dirs: ["trigger"],
-});
+  // Daytona dynamically loads its multipart upload/download dependencies.
+  build: { external: ["@daytona/sdk"] },
+})

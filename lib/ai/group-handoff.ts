@@ -15,7 +15,8 @@ export const handoffResultSchema = z.object({
 
 export function createGroupHandoffTools(
   members: GroupMember[],
-  selectedBotId?: string
+  selectedBotId?: string,
+  onTransfer?: (botId: string) => void
 ) {
   let transferred = false
   return {
@@ -33,6 +34,7 @@ export function createGroupHandoffTools(
         if (!members.some((member) => member.id === botId))
           throw new Error("Choose a bot ID from the group roster.")
         transferred = true
+        onTransfer?.(botId)
         return { botId, reason }
       },
     }),
@@ -47,16 +49,22 @@ export function createGroupWorkflow<T extends GroupMember>({
   resolveBot,
   instructions,
   onBotChange,
+  recipientTools = [],
+  loadMemory,
 }: {
   bot: T
   messages: ModelMessage[]
   resolveBot: (id: string) => Promise<T>
   instructions: (bot: T, handoff?: { from: string; reason: string }) => string
   onBotChange: (bot: T) => void
+  recipientTools?: ("readMemory" | "writeMemory")[]
+  loadMemory?: (bot: T) => Promise<string>
 }) {
   let active = bot
   let handoff: { from: string; reason: string } | undefined
+  let memoryContext = ""
   return async ({ steps }: Parameters<PrepareStepFunction<ToolSet>>[0]) => {
+    let justTransferred = false
     if (!handoff) {
       const results = steps.at(-1)?.toolResults ?? []
       const transfer = results.find((result) => result.toolName === "handoff")
@@ -65,15 +73,26 @@ export function createGroupWorkflow<T extends GroupMember>({
         const next = await resolveBot(parsed.data.botId)
         handoff = { from: active.name, reason: parsed.data.reason }
         active = next
+        justTransferred = true
         onBotChange(active)
       }
     }
+    if (loadMemory && (steps.length === 0 || justTransferred))
+      memoryContext = await loadMemory(active)
     return {
-      instructions: instructions(active, handoff),
+      instructions: [instructions(active, handoff), memoryContext]
+        .filter(Boolean)
+        .join("\n\n"),
       // Do not let the receiving model continue the sender's self-introduction
       // or tool narration. The tool call stays in the streamed UI transcript.
       ...(handoff
-        ? { messages, activeTools: [], toolChoice: "none" as const }
+        ? {
+            ...(justTransferred ? { messages } : {}),
+            activeTools: recipientTools,
+            toolChoice: recipientTools.length
+              ? ("auto" as const)
+              : ("none" as const),
+          }
         : {}),
     }
   }
