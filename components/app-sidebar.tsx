@@ -3,7 +3,13 @@
 import * as React from "react"
 import { UserButton } from "@clerk/nextjs"
 import { formatDistanceToNow } from "date-fns"
-import { PlusIcon, SearchIcon, UsersIcon, BrainIcon } from "lucide-react"
+import {
+  PlusIcon,
+  SearchIcon,
+  UsersIcon,
+  BrainIcon,
+  CreditCardIcon,
+} from "lucide-react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 
@@ -14,6 +20,7 @@ import {
 } from "@/components/group-chat-avatar"
 import { BotDialog } from "@/components/bot-dialog"
 import { MemorySettingsDialog } from "@/components/memory-settings-dialog"
+import { usePaidAccess } from "@/components/paid-access"
 import { Button } from "@/components/ui/button"
 import { ChatAvatar } from "@/components/chat-avatar"
 import {
@@ -58,6 +65,7 @@ export function AppSidebar({
   const [groupDialogOpen, setGroupDialogOpen] = React.useState(false)
   const [searchOpen, setSearchOpen] = React.useState(false)
   const router = useRouter()
+  const requirePaidAccess = usePaidAccess()
   const params = useParams()
   const routeChatId = params.chatId
   const activeChatId = Array.isArray(routeChatId) ? routeChatId[0] : routeChatId
@@ -87,11 +95,19 @@ export function AppSidebar({
             />
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuGroup>
-                <DropdownMenuItem onClick={() => setBotDialogOpen(true)}>
+                <DropdownMenuItem
+                  onClick={() => {
+                    if (requirePaidAccess()) setBotDialogOpen(true)
+                  }}
+                >
                   <PlusIcon />
                   Create new bot
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setGroupDialogOpen(true)}>
+                <DropdownMenuItem
+                  onClick={() => {
+                    if (requirePaidAccess()) setGroupDialogOpen(true)
+                  }}
+                >
                   <UsersIcon />
                   Create a group chat
                 </DropdownMenuItem>
@@ -190,7 +206,15 @@ export function AppSidebar({
                         "order-last min-w-0 flex-1 truncate text-left text-sm text-sidebar-foreground group-data-[collapsible=icon]:hidden",
                     },
                   }}
-                />
+                >
+                  <UserButton.MenuItems>
+                    <UserButton.Link
+                      label="Billing & plans"
+                      labelIcon={<CreditCardIcon />}
+                      href="/billing"
+                    />
+                  </UserButton.MenuItems>
+                </UserButton>
               }
             />
           </SidebarMenuItem>

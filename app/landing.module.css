@@ -797,6 +797,41 @@
   padding: 0 27px 22px 0;
   max-width: 65ch;
 }
+.pricingSection {
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: 65px 30px 90px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 35px;
+  flex-wrap: wrap;
+}
+.pricingSection h2 {
+  font-size: clamp(30px, 3.5vw, 44px);
+  letter-spacing: -0.035em;
+  font-weight: 500;
+  line-height: 1.15;
+}
+.pricingSection > div > p:not(.monthlyPrice) {
+  margin-top: 18px;
+  color: var(--quiet);
+  font-size: 15px;
+  line-height: 1.8;
+}
+.monthlyPrice {
+  font-size: 46px;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  margin-bottom: 18px;
+}
+.monthlyPrice span {
+  margin-left: 8px;
+  font-size: 14px;
+  color: var(--quiet);
+  font-weight: 400;
+  letter-spacing: normal;
+}
 .closing {
   text-align: center;
   padding: 80px 25px 105px;

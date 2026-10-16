@@ -19,6 +19,7 @@ import { createComputerTools, getChatSandbox } from "../lib/ai/computer-tools"
 import { getModel, modelOptions } from "../lib/ai/models"
 import { responseTimeoutPolicy } from "../lib/ai/response-timeout"
 import { ChatRequestError, chatErrorMessage } from "../lib/ai/chat-error"
+import { requireUserPaidPlan } from "../lib/billing-agent"
 
 export const chatAgent = chat.agent({
   id: "chat-agent",
@@ -99,6 +100,7 @@ export const chatAgent = chat.agent({
     try {
       const group = await isGroupChat(chatId)
       const bot = await getChatBot(chatId, clientData.botId)
+      await requireUserPaidPlan(bot.userId)
       const model = getModel(clientData.modelId)
       const memory = await getChatMemory(chatId, bot.id)
       const snapshot = await memory.read()

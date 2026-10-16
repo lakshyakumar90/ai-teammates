@@ -9,6 +9,7 @@ import { useForm } from "react-hook-form";
 import type { z } from "zod";
 
 import { createBot, deleteBot, updateBot } from "@/actions/bot";
+import { usePaidAccess, handleBillingFailure } from "@/components/paid-access";
 import { ChatAvatar } from "@/components/chat-avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -87,6 +88,7 @@ export function BotDialog({
   const [confirmOpen, setConfirmOpen] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
   const router = useRouter();
+  const requirePaidAccess = usePaidAccess();
 
   const form = useForm<BotFormValues>({
     resolver: zodResolver(botFormSchema),
@@ -100,6 +102,7 @@ export function BotDialog({
   const errors = form.formState.errors;
 
   function handleDialogOpenChange(next: boolean) {
+    if (next && !requirePaidAccess()) return;
     if (!next) {
       // Discard unsaved edits on close so reopening shows stored values.
       if (bot) {
@@ -116,17 +119,20 @@ export function BotDialog({
   }
 
   async function onSubmit(values: BotFormValues) {
+    if (!requirePaidAccess()) return;
     setServerError(null);
     try {
       if (bot) {
-        await updateBot({ ...values, id: bot.id, avatar: faceSeed });
+        const result = await updateBot({ ...values, id: bot.id, avatar: faceSeed });
+        if (handleBillingFailure(result)) return;
         toast.add({
           title: "Bot updated",
           description: `${values.name} is up to date.`,
           type: "success",
         });
       } else {
-        await createBot({ ...values, avatar: faceSeed });
+        const result = await createBot({ ...values, avatar: faceSeed });
+        if (handleBillingFailure(result)) return;
         toast.add({
           title: "Bot created",
           description: `${values.name} is ready to chat.`,
@@ -147,12 +153,14 @@ export function BotDialog({
   }
 
   async function handleDelete() {
+    if (!requirePaidAccess()) return;
     if (!bot) {
       return;
     }
     setDeleting(true);
     try {
-      await deleteBot({ id: bot.id });
+      const result = await deleteBot({ id: bot.id });
+      if (handleBillingFailure(result)) return;
       toast.add({
         title: "Bot deleted",
         description: `${bot.name} is gone.`,

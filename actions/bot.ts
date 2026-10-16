@@ -8,6 +8,7 @@ import { z } from "zod"
 import { createBotSandbox, deleteBotSandbox } from "@/lib/daytona"
 import { db } from "@/lib/db"
 import { bots, chatMembers, chats, insertBotSchema } from "@/lib/db/schema"
+import { getPaidAccessError } from "@/lib/billing"
 
 const createBotSchema = insertBotSchema.omit({
   id: true,
@@ -18,6 +19,8 @@ const createBotSchema = insertBotSchema.omit({
 export type CreateBotInput = Omit<z.infer<typeof createBotSchema>, "userId">
 
 export async function createBot(input: CreateBotInput) {
+  const denied = await getPaidAccessError()
+  if (denied) return denied
   const { userId } = await auth()
   if (!userId) {
     throw new Error("Not authenticated")
@@ -67,6 +70,8 @@ const updateBotSchema = insertBotSchema
 export type UpdateBotInput = z.infer<typeof updateBotSchema>
 
 export async function updateBot(input: UpdateBotInput) {
+  const denied = await getPaidAccessError()
+  if (denied) return denied
   const { userId } = await auth()
   if (!userId) {
     throw new Error("Not authenticated")
@@ -92,6 +97,8 @@ export async function updateBot(input: UpdateBotInput) {
 const deleteBotSchema = z.object({ id: z.string().min(1) })
 
 export async function deleteBot(input: z.infer<typeof deleteBotSchema>) {
+  const denied = await getPaidAccessError()
+  if (denied) return denied
   const { userId } = await auth()
   if (!userId) {
     throw new Error("Not authenticated")

@@ -4,6 +4,7 @@ import { z } from "zod"
 
 import { getChatBot } from "./bot-context"
 import { createDaytonaClient } from "../daytona-client"
+import { requireUserPaidPlan } from "../billing-agent"
 import {
   ChatRequestError,
   chatErrorMessage,
@@ -21,6 +22,7 @@ const truncate = (text: string) =>
 
 export async function getChatSandbox(chatId: string, botId?: string) {
   const bot = await getChatBot(chatId, botId)
+  await requireUserPaidPlan(bot.userId)
   if (!bot.sandboxId)
     throw new ChatRequestError("This bot has no Daytona sandbox.")
   const sandbox = await createDaytonaClient().get(bot.sandboxId)

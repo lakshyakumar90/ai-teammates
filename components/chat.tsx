@@ -86,6 +86,7 @@ import {
   startChatSession,
 } from "@/actions/chat"
 import type { chatAgent } from "@/trigger/chat"
+import { usePaidAccess, notifyBillingError } from "@/components/paid-access"
 
 const messageBotSchema = z.object({
   id: z.string(),
@@ -218,7 +219,11 @@ type ChatProps = {
 }
 
 function unwrapChatAction<T>(result: { data: T } | { error: string }) {
-  if ("error" in result) throw new Error(result.error)
+  if ("error" in result) {
+    const error = new Error(result.error)
+    notifyBillingError(error)
+    throw error
+  }
   return result.data
 }
 
@@ -284,6 +289,7 @@ function ChatView({
   transport: TriggerChatTransport
   initialMessages: UIMessage[]
 }) {
+  const requirePaidAccess = usePaidAccess()
   const [selectedBotId, setSelectedBotId] = useState(() => {
     const last = initialMessages.findLast(
       (message) => message.role === "assistant"
@@ -342,6 +348,7 @@ function ChatView({
     transport,
     messages: initialMessages,
     resume: initialMessages.length > 0,
+    onError: notifyBillingError,
     onFinish: ({ message, isAbort, isError }) => {
       if (!groupBots) return
       const parsed = getMessageBot(message, true)
@@ -590,6 +597,7 @@ function ChatView({
               setAttachmentError(message)
               throw new Error(message)
             }
+            if (!requirePaidAccess()) return
             setAttachmentError(undefined)
             const recipient = groupBots
               ? resolveBotMention(text, groupBots, botId)

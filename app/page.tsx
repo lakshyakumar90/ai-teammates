@@ -145,6 +145,7 @@ export default async function LandingPage() {
           <a href="#work-together">Product</a>
           <a href="#memory">Memory</a>
           <a href="#your-team">Your team</a>
+          <Link href="/pricing">Pricing</Link>
           <a href="#questions">Questions</a>
         </nav>
         <Link
@@ -429,6 +430,28 @@ export default async function LandingPage() {
           </div>
         </section>
 
+        <section
+          className={styles.pricingSection}
+          aria-labelledby="pricing-title"
+        >
+          <div>
+            <h2 id="pricing-title">One plan. Your whole team.</h2>
+            <p>
+              Bots, group chats, memory, and cloud computers.
+              <br />
+              All features, with one Pro subscription.
+            </p>
+          </div>
+          <div>
+            <p className={styles.monthlyPrice}>
+              $20<span>/ month</span>
+            </p>
+            <Link href="/pricing" className={styles.primaryAction}>
+              View pricing
+              <ArrowUpRight size={17} />
+            </Link>
+          </div>
+        </section>
         <section className={styles.closing}>
           <div className={styles.closingFaces}>
             <ChatAvatar seed="Ada" />

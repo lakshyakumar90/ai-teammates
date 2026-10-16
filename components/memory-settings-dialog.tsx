@@ -6,6 +6,7 @@ import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import type { z } from "zod"
 import { getMemoryPreferences, updateMemoryPreferences } from "@/actions/memory"
+import { usePaidAccess, handleBillingFailure } from "@/components/paid-access"
 import { memoryPreferencesFormSchema } from "@/lib/db/schema"
 import { defaultMemoryPreferences } from "@/lib/ai/memory-manager"
 import { Button } from "@/components/ui/button"
@@ -67,6 +68,7 @@ export function MemorySettingsDialog({
   const [loaded, setLoaded] = React.useState(false)
   const [error, setError] = React.useState<string>()
   const router = useRouter()
+  const requirePaidAccess = usePaidAccess()
   const form = useForm<z.infer<typeof memoryPreferencesFormSchema>>({
     resolver: zodResolver(memoryPreferencesFormSchema),
     defaultValues: defaultMemoryPreferences,
@@ -74,6 +76,7 @@ export function MemorySettingsDialog({
   const values = useWatch({ control: form.control })
   const pending = loading || form.formState.isSubmitting
   async function changeOpen(next: boolean) {
+    if (next && !requirePaidAccess()) return
     if (pending) return
     setOpen(next)
     setError(undefined)
@@ -103,9 +106,11 @@ export function MemorySettingsDialog({
         <form
           className="flex flex-col gap-5"
           onSubmit={form.handleSubmit(async (input) => {
+            if (!requirePaidAccess()) return
             setError(undefined)
             try {
-              await updateMemoryPreferences(input)
+              const result = await updateMemoryPreferences(input)
+              if (handleBillingFailure(result)) return
               toast.add({ title: "Memory settings updated", type: "success" })
               setOpen(false)
               router.refresh()

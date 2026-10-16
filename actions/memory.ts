@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm"
 import { db } from "@/lib/db/client"
 import { memoryPreferences, memoryPreferencesFormSchema } from "@/lib/db/schema"
 import { defaultMemoryPreferences } from "@/lib/ai/memory-manager"
+import { getPaidAccessError } from "@/lib/billing"
 
 export async function getMemoryPreferences() {
   const { userId } = await auth()
@@ -16,6 +17,8 @@ export async function getMemoryPreferences() {
 }
 
 export async function updateMemoryPreferences(input: unknown) {
+  const denied = await getPaidAccessError()
+  if (denied) return denied
   const { userId } = await auth()
   if (!userId) throw new Error("Unauthorized")
   const values = memoryPreferencesFormSchema.parse(input)

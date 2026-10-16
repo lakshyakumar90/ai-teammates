@@ -7,10 +7,12 @@ import { z } from "zod"
 import { getSandboxVncUrl } from "@/lib/daytona-vnc"
 import { sanitizeDetail } from "@/lib/ai/chat-error"
 import { getChat } from "@/queries/chats"
+import { getPaidAccessError } from "@/lib/billing"
+import type { BillingFailure } from "@/lib/billing-policy"
 
 export async function loadChatDesktop(
   chatId: string
-): Promise<{ url: string } | { error: string }> {
+): Promise<{ url: string } | { error: string } | BillingFailure> {
   const { userId } = await auth()
   if (!userId) return { error: "Not authenticated." }
   if (!z.string().min(1).safeParse(chatId).success) {
@@ -18,8 +20,12 @@ export async function loadChatDesktop(
   }
 
   try {
+    const denied = await getPaidAccessError()
+    if (denied) return denied
     const chat = await getChat(chatId)
     if (!chat) return { error: "Chat not found." }
+    if (chat.kind === "group")
+      return { error: "Group chats do not have a desktop." }
     const sandboxId = chat.members[0]?.bot.sandboxId
     if (!sandboxId) return { error: "This bot has no Daytona sandbox." }
     return { url: await getSandboxVncUrl(sandboxId) }

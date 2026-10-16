@@ -1,4 +1,11 @@
 "use client"
+import {
+  usePaidAccess,
+  useVerifiedPaidAccess,
+  handleBillingFailure,
+} from "@/components/paid-access"
+import { verifyPaidAccess } from "@/actions/billing"
+import { toast } from "@/components/ui/toast"
 
 import {
   createContext,
@@ -31,6 +38,8 @@ const ChatDesktopContext = createContext<{
 } | null>(null)
 
 export function ChatDesktopProvider({ children }: { children: ReactNode }) {
+  const requirePaidAccess = usePaidAccess()
+  const paid = useVerifiedPaidAccess()
   const [open, setOpen] = useState(false)
   const [hasOpened, setHasOpened] = useState(false)
   const [fullscreen, setFullscreen] = useState(false)
@@ -46,13 +55,29 @@ export function ChatDesktopProvider({ children }: { children: ReactNode }) {
   return (
     <ChatDesktopContext
       value={{
-        open,
+        open: paid && open,
         toggle: () => {
-          setHasOpened(true)
-          setOpen((value) => !value)
+          if (open) {
+            setOpen(false)
+            return
+          }
+          if (!requirePaidAccess()) return
+          void verifyPaidAccess()
+            .then((result) => {
+              if (handleBillingFailure(result)) return
+              setHasOpened(true)
+              setOpen(true)
+            })
+            .catch(() =>
+              toast.add({
+                title: "Could not check subscription",
+                description: "Please retry before opening the desktop.",
+                type: "error",
+              })
+            )
         },
-        hasOpened,
-        fullscreen,
+        hasOpened: paid && hasOpened,
+        fullscreen: paid && fullscreen,
         setFullscreen,
         previewElement,
         setPreviewElement,
@@ -61,7 +86,9 @@ export function ChatDesktopProvider({ children }: { children: ReactNode }) {
         aspectRatio,
         setAspectRatio,
         attempt,
-        retry: () => setAttempt((value) => value + 1),
+        retry: () => {
+          if (requirePaidAccess()) setAttempt((value) => value + 1)
+        },
       }}
     >
       {children}

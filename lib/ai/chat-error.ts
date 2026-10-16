@@ -2,6 +2,7 @@ import { APICallError, RetryError, StreamProviderError } from "ai"
 import { ApiError } from "@trigger.dev/sdk"
 
 import { ModelConfigurationError } from "./models"
+import { PaidPlanRequiredError } from "../billing-policy"
 
 export class ChatRequestError extends Error {}
 
@@ -34,6 +35,7 @@ export function chatErrorMessage(
   if (RetryError.isInstance(error))
     return chatErrorMessage(error.lastError, providerName)
   if (
+    error instanceof PaidPlanRequiredError ||
     error instanceof ChatRequestError ||
     error instanceof ModelConfigurationError
   ) {

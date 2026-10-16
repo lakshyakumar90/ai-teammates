@@ -6,10 +6,13 @@ import { nanoid } from "nanoid"
 import { z } from "zod"
 import { db } from "@/lib/db"
 import { bots, chats, chatMembers, groupChatFormSchema } from "@/lib/db/schema"
+import { getPaidAccessError } from "@/lib/billing"
 
 export async function createGroupChat(
   input: z.infer<typeof groupChatFormSchema>
 ) {
+  const denied = await getPaidAccessError()
+  if (denied) return denied
   const { userId } = await auth()
   if (!userId) throw new Error("Not authenticated")
   const { name, botIds } = groupChatFormSchema.parse(input)
@@ -40,6 +43,8 @@ const deleteGroupChatSchema = z.object({ id: z.string().min(1) })
 export async function updateGroupChat(
   input: z.infer<typeof updateGroupChatSchema>
 ) {
+  const denied = await getPaidAccessError()
+  if (denied) return denied
   const { userId } = await auth()
   if (!userId) throw new Error("Not authenticated")
   const { id, name, botIds } = updateGroupChatSchema.parse(input)
@@ -76,6 +81,8 @@ export async function updateGroupChat(
 export async function deleteGroupChat(
   input: z.infer<typeof deleteGroupChatSchema>
 ) {
+  const denied = await getPaidAccessError()
+  if (denied) return denied
   const { userId } = await auth()
   if (!userId) throw new Error("Not authenticated")
   const { id } = deleteGroupChatSchema.parse(input)

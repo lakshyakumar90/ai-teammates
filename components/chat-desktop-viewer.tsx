@@ -11,6 +11,7 @@ import {
 import { MaximizeIcon, MinimizeIcon } from "lucide-react"
 
 import { loadChatDesktop } from "@/actions/desktop"
+import { handleBillingFailure } from "@/components/paid-access"
 import { useChatDesktop } from "@/components/chat-desktop"
 import { Button } from "@/components/ui/button"
 import {
@@ -127,6 +128,7 @@ export function ChatDesktopViewer({ chatId }: { chatId: string }) {
       .then(([result, { default: RFB }]) => {
         if (!active) return
         if ("error" in result) {
+          handleBillingFailure(result)
           fail(result.error)
           return
         }

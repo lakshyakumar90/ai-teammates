@@ -21,4 +21,8 @@ The user requested a public landing page at `/`, inspired by https://www.skydive
 
 ## Evidence and claims
 
-The landing page may demonstrate the features above. No customer counts, testimonials, integration catalog, autonomous scheduling, pricing, or external messaging channels have been established.
+The landing page may demonstrate the features above. No customer counts, testimonials, integration catalog, autonomous scheduling, or external messaging channels have been established.
+
+## Billing
+
+Clerk manages personal subscriptions. Pro is USD 20 per month and unlocks all bot and sandbox features. Free accounts can sign in and view plans, but cannot create or use bots or sandboxes. Server actions check the live Clerk subscription, and agent turns enforce access. The free workspace shows a centered upgrade screen instead of chat and desktop panels; blocked actions open a centered pricing dialog. Pricing is linked from the landing page and upgrade controls, not a sidebar item. The user menu includes Billing & plans, opening `/billing` for Clerk account and subscription management. There are no custom usage ledgers, wallets, or unit economics layers. `clerk-billing.json` contains the plan and feature configuration.

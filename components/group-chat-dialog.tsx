@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
+import { usePaidAccess, handleBillingFailure } from "@/components/paid-access"
 import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import type { z } from "zod"
@@ -72,6 +73,7 @@ export function GroupChatDialog({
   const [localOpen, setLocalOpen] = React.useState(false)
   const [serverError, setServerError] = React.useState<string>()
   const router = useRouter()
+  const requirePaidAccess = usePaidAccess()
   const form = useForm<z.infer<typeof groupChatFormSchema>>({
     resolver: zodResolver(groupChatFormSchema),
     values: { name: group?.name ?? "", botIds: group?.botIds ?? [] },
@@ -80,6 +82,7 @@ export function GroupChatDialog({
   const pending = form.formState.isSubmitting || deleting
   const errors = form.formState.errors
   function changeOpen(next: boolean) {
+    if (next && !requirePaidAccess()) return
     if (pending) return
     if (!next) {
       form.reset()
@@ -104,11 +107,13 @@ export function GroupChatDialog({
         <form
           className="flex min-w-0 flex-col gap-4"
           onSubmit={form.handleSubmit(async (values) => {
+            if (!requirePaidAccess()) return
             setServerError(undefined)
             try {
               const chat = group
                 ? await updateGroupChat({ ...values, id: group.id })
                 : await createGroupChat(values)
+              if (handleBillingFailure(chat)) return
               toast.add({
                 title: group ? "Group chat updated" : "Group chat created",
                 description: group
@@ -238,7 +243,9 @@ export function GroupChatDialog({
                         setDeleting(true)
                         setServerError(undefined)
                         try {
-                          await deleteGroupChat({ id: group.id })
+                          if (!requirePaidAccess()) return
+                          const result = await deleteGroupChat({ id: group.id })
+                          if (handleBillingFailure(result)) return
                           toast.add({
                             title: "Group chat deleted",
                             description: `${group.name} was deleted.`,

@@ -15,6 +15,7 @@ import {
 import { ChatAvatar } from "@/components/chat-avatar"
 import { useChatDesktop } from "@/components/chat-desktop"
 import { Button } from "@/components/ui/button"
+import { usePaidAccess } from "@/components/paid-access"
 
 export function ChatHeader({
   title,
@@ -33,13 +34,16 @@ export function ChatHeader({
 }) {
   const [editOpen, setEditOpen] = React.useState(false)
   const desktop = useChatDesktop()
+  const requirePaidAccess = usePaidAccess()
 
   return (
     <header className="flex items-center justify-between gap-2 p-2">
       {!groupBots && bot ? (
         <button
           type="button"
-          onClick={() => setEditOpen(true)}
+          onClick={() => {
+            if (requirePaidAccess()) setEditOpen(true)
+          }}
           className="flex min-w-0 cursor-pointer items-center gap-2 rounded-md hover:bg-muted"
         >
           <ChatAvatar
@@ -52,7 +56,9 @@ export function ChatHeader({
         <button
           type="button"
           disabled={!group}
-          onClick={() => setEditOpen(true)}
+          onClick={() => {
+            if (requirePaidAccess()) setEditOpen(true)
+          }}
           className="flex min-w-0 cursor-pointer items-center gap-2 rounded-md hover:bg-muted"
         >
           {groupBots ? (

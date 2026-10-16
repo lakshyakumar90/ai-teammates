@@ -1,0 +1,37 @@
+{
+  "billing": {
+    "user_enabled": true,
+    "features": {
+      "bots": {
+        "name": "Bots",
+        "description": "Create and use bots, individual chats, group chats, handoffs, and memory.",
+        "include_in_jwt": true,
+        "publicly_visible": true
+      },
+      "sandboxes": {
+        "name": "Sandboxes",
+        "description": "Create and use bot computers, connect to desktops, and run sandbox tools.",
+        "include_in_jwt": true,
+        "publicly_visible": true
+      }
+    },
+    "plans": {
+      "free_user": {
+        "name": "Free",
+        "description": "An account without bot or sandbox access.",
+        "features": []
+      },
+      "pro": {
+        "name": "Pro",
+        "description": "All AI Teammates features, including bots, group chats, memory, and cloud computers.",
+        "amount": 2000,
+        "currency": "usd",
+        "payer_type": "user",
+        "is_recurring": true,
+        "publicly_visible": true,
+        "free_trial_enabled": false,
+        "features": ["bots", "sandboxes"]
+      }
+    }
+  }
+}
