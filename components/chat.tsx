@@ -10,6 +10,7 @@ import { getToolName, isToolUIPart, type UIMessage } from "ai"
 import Image from "next/image"
 import { CheckIcon, ChevronDownIcon } from "lucide-react"
 import { useState } from "react"
+import { z } from "zod"
 
 import {
   Conversation,
@@ -55,7 +56,10 @@ import {
   usePromptInputAttachments,
 } from "@/components/ai-elements/prompt-input"
 import { ChatAvatar } from "@/components/chat-avatar"
-import type { GroupAvatarBot } from "@/components/group-chat-avatar"
+import {
+  GroupChatAvatar,
+  type GroupAvatarBot,
+} from "@/components/group-chat-avatar"
 import { Button } from "@/components/ui/button"
 import {
   Tool,
@@ -75,6 +79,40 @@ import {
   startChatSession,
 } from "@/actions/chat"
 import type { chatAgent } from "@/trigger/chat"
+
+const messageBotSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  avatar: z.string(),
+})
+
+function MessageBotAvatar({
+  message,
+  bots,
+}: {
+  message: UIMessage
+  bots: GroupAvatarBot[]
+}) {
+  const botPart = message.parts.find((part) => part.type === "data-bot")
+  const metadata = message.metadata
+  const savedBot =
+    botPart && "data" in botPart
+      ? botPart.data
+      : metadata && typeof metadata === "object" && "bot" in metadata
+        ? metadata.bot
+        : undefined
+  const result = messageBotSchema.safeParse(savedBot)
+  if (!result.success)
+    return <GroupChatAvatar bots={bots} className="mt-1 size-7" />
+  const { name, avatar } = result.data
+  return (
+    <span role="img" aria-label={name} title={name} className="mt-1 shrink-0">
+      <span aria-hidden="true">
+        <ChatAvatar seed={avatar} className="size-7 rounded-full" />
+      </span>
+    </span>
+  )
+}
 
 function ComposerAttachments() {
   const attachments = usePromptInputAttachments()
@@ -241,7 +279,18 @@ function ChatView({
           {messages
             .filter((message) => message.parts.some(isVisibleMessagePart))
             .map((message) => (
-              <Message from={message.role} key={message.id}>
+              <Message
+                from={message.role}
+                key={message.id}
+                className={
+                  groupBots && message.role === "assistant"
+                    ? "flex-row items-start"
+                    : undefined
+                }
+              >
+                {groupBots && message.role === "assistant" ? (
+                  <MessageBotAvatar message={message} bots={groupBots} />
+                ) : null}
                 <span className="sr-only">
                   {message.role === "user" ? "You" : "Assistant"}
                 </span>

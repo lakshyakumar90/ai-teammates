@@ -67,6 +67,12 @@ export const chatAgent = chat.agent({
     try {
       const group = await isGroupChat(chatId)
       const bot = await getChatBot(chatId, clientData.botId)
+      if (group) {
+        chat.response.write({
+          type: "data-bot",
+          data: { id: bot.id, name: bot.name, avatar: bot.avatar },
+        })
+      }
       return streamText({
         model: getModel(clientData.modelId),
         instructions: group
