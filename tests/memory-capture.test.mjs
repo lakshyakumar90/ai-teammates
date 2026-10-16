@@ -23,7 +23,14 @@ test("short replies are captured using the question's context without requiring 
         {
           type: "text",
           text: JSON.stringify({
-            facts: [{ key: "dog_name", value: "Inu", evidence: "inu" }],
+            facts: [
+              {
+                scope: "global",
+                key: "dog_name",
+                value: "Inu",
+                evidence: "inu",
+              },
+            ],
           }),
         },
       ],
@@ -36,7 +43,7 @@ test("short replies are captured using the question's context without requiring 
     messages,
     signal: new AbortController().signal,
   })
-  assert.deepEqual(facts, [{ key: "dog_name", value: "Inu" }])
+  assert.deepEqual(facts, [{ scope: "global", key: "dog_name", value: "Inu" }])
   assert.match(
     JSON.stringify(model.doGenerateCalls[0].prompt),
     /hey do u know my dog name/
@@ -47,21 +54,28 @@ test("short replies are captured using the question's context without requiring 
 test("unsubstantiated values and evidence cannot be saved", () => {
   assert.deepEqual(
     groundedMemoryFacts(
-      [{ key: "dog_name", value: "Fido", evidence: "inu" }],
+      [{ scope: "global", key: "dog_name", value: "Fido", evidence: "inu" }],
       "its inu"
     ),
     []
   )
   assert.deepEqual(
     groundedMemoryFacts(
-      [{ key: "dog_name", value: "Inu", evidence: "inu" }],
+      [{ scope: "global", key: "dog_name", value: "Inu", evidence: "inu" }],
       "What is my dog's name?"
     ),
     []
   )
   assert.deepEqual(
     groundedMemoryFacts(
-      [{ key: "dog_name", value: "[forgotten]", evidence: "inu" }],
+      [
+        {
+          scope: "global",
+          key: "dog_name",
+          value: "[forgotten]",
+          evidence: "inu",
+        },
+      ],
       "its inu"
     ),
     []

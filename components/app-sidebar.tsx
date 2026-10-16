@@ -3,7 +3,7 @@
 import * as React from "react"
 import { UserButton } from "@clerk/nextjs"
 import { formatDistanceToNow } from "date-fns"
-import { PlusIcon, SearchIcon, UsersIcon } from "lucide-react"
+import { PlusIcon, SearchIcon, UsersIcon, BrainIcon } from "lucide-react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 
@@ -13,6 +13,7 @@ import {
   type GroupAvatarBot,
 } from "@/components/group-chat-avatar"
 import { BotDialog } from "@/components/bot-dialog"
+import { MemorySettingsDialog } from "@/components/memory-settings-dialog"
 import { Button } from "@/components/ui/button"
 import { ChatAvatar } from "@/components/chat-avatar"
 import {
@@ -164,6 +165,14 @@ export function AppSidebar({
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
+          <SidebarMenuItem>
+            <MemorySettingsDialog>
+              <SidebarMenuButton tooltip="Memory & privacy">
+                <BrainIcon />
+                <span>Memory & privacy</span>
+              </SidebarMenuButton>
+            </MemorySettingsDialog>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               size="lg"

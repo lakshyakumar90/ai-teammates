@@ -1,6 +1,7 @@
 import { relations } from "drizzle-orm"
 import {
   index,
+  boolean,
   pgEnum,
   pgTable,
   primaryKey,
@@ -36,6 +37,29 @@ export const insertBotSchema = createInsertSchema(bots, {
   instructions: z.string().max(2000).optional(),
   avatar: z.string().min(1),
 })
+
+export const memoryPreferences = pgTable("memory_preferences", {
+  userId: text("user_id").primaryKey(),
+  automaticMemory: boolean("automatic_memory").notNull().default(true),
+  globalMemory: boolean("global_memory").notNull().default(true),
+  groupMemory: boolean("group_memory").notNull().default(true),
+  botMemoryInGroups: boolean("bot_memory_in_groups").notNull().default(false),
+})
+
+export const memoryPreferencesFormSchema = createInsertSchema(memoryPreferences)
+  .omit({ userId: true })
+  .required()
+
+export const userMemories = pgTable(
+  "user_memories",
+  {
+    userId: text("user_id").notNull(),
+    key: text("key").notNull(),
+    value: text("value").notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.key] })]
+)
 
 export const chatKindEnum = pgEnum("chat_kind", ["direct", "group"])
 
@@ -93,6 +117,19 @@ export const chatMembers = pgTable(
     primaryKey({ columns: [table.chatId, table.botId] }),
     index("chat_members_bot_id_idx").on(table.botId),
   ]
+)
+
+export const groupMemories = pgTable(
+  "group_memories",
+  {
+    chatId: text("chat_id")
+      .notNull()
+      .references(() => chats.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    value: text("value").notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.chatId, table.key] })]
 )
 
 export const botsRelations = relations(bots, ({ many }) => ({

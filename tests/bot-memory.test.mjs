@@ -212,7 +212,12 @@ test("both instruction sets explain cross-chat recall and memory updates", () =>
     assert.match(prompt, /MEMORY.md/)
     assert.match(prompt, /readMemory/)
     assert.match(prompt, /writeMemory/)
-    assert.match(prompt, /1:1 chat can be recalled in a group chat/)
+    assert.match(prompt, /Global User Memory/)
+    assert.match(prompt, /Group Shared Memory/)
+    assert.match(
+      prompt,
+      /Personal information belongs in global memory by default/
+    )
   }
 })
 

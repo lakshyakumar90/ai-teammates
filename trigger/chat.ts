@@ -7,11 +7,8 @@ import {
   buildGroupBotInstructions,
   buildMemoryContext,
 } from "../lib/ai/bot-instructions"
-import {
-  createMemoryTools,
-  saveMemoryFacts,
-  readBotMemory,
-} from "../lib/ai/bot-memory"
+import { getChatMemory } from "../lib/ai/chat-memory"
+import { createRoutedMemoryTools } from "../lib/ai/memory-manager"
 import { captureUserMemory } from "../lib/ai/memory-capture"
 import { getChatBot, getGroupBots, isGroupChat } from "../lib/ai/bot-context"
 import {
@@ -32,7 +29,9 @@ export const chatAgent = chat.agent({
   }),
   tools: async ({ chatId, clientData }) => {
     let activeBotId = clientData?.botId
-    const memory = createMemoryTools(() => getChatSandbox(chatId, activeBotId))
+    const memory = createRoutedMemoryTools(() =>
+      getChatMemory(chatId, activeBotId)
+    )
     if (await isGroupChat(chatId))
       return {
         ...createGroupHandoffTools(
@@ -61,7 +60,7 @@ export const chatAgent = chat.agent({
           ...((await isGroupChat(chatId))
             ? createGroupHandoffTools(await getGroupBots(chatId))
             : createComputerTools(() => getChatSandbox(chatId), false)),
-          ...createMemoryTools(() => getChatSandbox(chatId)),
+          ...createRoutedMemoryTools(() => getChatMemory(chatId)),
         },
       })
     } catch {
@@ -101,9 +100,18 @@ export const chatAgent = chat.agent({
       const group = await isGroupChat(chatId)
       const bot = await getChatBot(chatId, clientData.botId)
       const model = getModel(clientData.modelId)
-      const facts = await captureUserMemory({ model, messages, signal })
-      if (facts.length)
-        await saveMemoryFacts(await getChatSandbox(chatId, bot.id), facts)
+      const memory = await getChatMemory(chatId, bot.id)
+      const snapshot = await memory.read()
+      const facts = memory.preferences.automaticMemory
+        ? await captureUserMemory({
+            model,
+            messages,
+            signal,
+            group,
+            memory: snapshot,
+          })
+        : []
+      await memory.remember(facts)
       const common = {
         model,
         messages,
@@ -118,10 +126,8 @@ export const chatAgent = chat.agent({
       }
       const loadMemory = async (active: typeof bot) => {
         signal.throwIfAborted()
-        const { content } = await readBotMemory(
-          await getChatSandbox(chatId, active.id)
-        )
-        return buildMemoryContext(content)
+        const authorized = await getChatMemory(chatId, active.id)
+        return `${buildMemoryContext(await authorized.read())}\nMemory preferences: ${JSON.stringify(authorized.preferences)}. When automaticMemory is false, new saves are paused; you may still delete facts on request. Do not claim to save new information while saving is paused.`
       }
       if (!group)
         return streamText({
@@ -151,8 +157,6 @@ export const chatAgent = chat.agent({
           loadMemory,
           resolveBot: async (id) => {
             const recipient = await getChatBot(chatId, id)
-            if (facts.length)
-              await saveMemoryFacts(await getChatSandbox(chatId, id), facts)
             return recipient
           },
           instructions: (active, handoff) =>
