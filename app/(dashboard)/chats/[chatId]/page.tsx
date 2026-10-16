@@ -13,6 +13,7 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable"
+import { getBots } from "@/queries/bots"
 import { getChat } from "@/queries/chats"
 import { defaultModelId, modelOptions } from "@/lib/ai/models"
 
@@ -35,6 +36,8 @@ export default async function ChatPage({
     )
   }
 
+  const availableBots = chat.kind === "group" ? await getBots() : undefined
+
   return (
     <ChatDesktopProvider key={chatId}>
       <div className="flex h-full max-h-dvh min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden">
@@ -51,30 +54,56 @@ export default async function ChatPage({
             <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
               <ChatHeader
                 title={chat.name ?? bot.name}
+                group={
+                  chat.kind === "group"
+                    ? {
+                        id: chat.id,
+                        name: chat.name ?? "Group chat",
+                        botIds: chat.members.map(({ bot }) => bot.id),
+                      }
+                    : undefined
+                }
+                availableBots={availableBots}
                 avatarSeed={bot.avatar}
-                bot={bot}
+                bot={chat.kind === "direct" ? bot : undefined}
+                groupBots={
+                  chat.kind === "group"
+                    ? chat.members.map(({ bot }) => bot)
+                    : undefined
+                }
               />
               <Chat
                 key={chatId}
                 chatId={chatId}
+                groupBots={
+                  chat.kind === "group"
+                    ? chat.members.map(({ bot }) => ({
+                        id: bot.id,
+                        name: bot.name,
+                        avatar: bot.avatar,
+                      }))
+                    : undefined
+                }
                 defaultModelId={defaultModelId}
                 modelOptions={modelOptions}
               />
             </div>
           </ResizablePanel>
-          <ChatDesktopWhenOpen>
-            <ResizableHandle />
-            <ResizablePanel
-              id="chat-desktop"
-              defaultSize="40%"
-              minSize="20%"
-              aria-label="Desktop panel"
-            >
-              <ChatDesktopPreview />
-            </ResizablePanel>
-          </ChatDesktopWhenOpen>
+          {chat.kind === "direct" ? (
+            <ChatDesktopWhenOpen>
+              <ResizableHandle />
+              <ResizablePanel
+                id="chat-desktop"
+                defaultSize="40%"
+                minSize="20%"
+                aria-label="Desktop panel"
+              >
+                <ChatDesktopPreview />
+              </ResizablePanel>
+            </ChatDesktopWhenOpen>
+          ) : null}
         </ResizablePanelGroup>
-        <ChatDesktopViewer chatId={chatId} />
+        {chat.kind === "direct" ? <ChatDesktopViewer chatId={chatId} /> : null}
       </div>
     </ChatDesktopProvider>
   )

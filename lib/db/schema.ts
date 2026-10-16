@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations } from "drizzle-orm"
 import {
   index,
   pgEnum,
@@ -6,10 +6,10 @@ import {
   primaryKey,
   text,
   timestamp,
-} from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
-import { nanoid } from "nanoid";
-import { z } from "zod";
+} from "drizzle-orm/pg-core"
+import { createInsertSchema } from "drizzle-zod"
+import { nanoid } from "nanoid"
+import { z } from "zod"
 
 export const bots = pgTable(
   "bots",
@@ -27,17 +27,17 @@ export const bots = pgTable(
     sandboxId: text("sandbox_id"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (table) => [index("bots_user_id_idx").on(table.userId)],
-);
+  (table) => [index("bots_user_id_idx").on(table.userId)]
+)
 
 export const insertBotSchema = createInsertSchema(bots, {
   name: z.string().min(1, "Name is required").max(100),
   job: z.string().min(1, "Job is required").max(200),
   instructions: z.string().max(2000).optional(),
   avatar: z.string().min(1),
-});
+})
 
-export const chatKindEnum = pgEnum("chat_kind", ["direct", "group"]);
+export const chatKindEnum = pgEnum("chat_kind", ["direct", "group"])
 
 export const chats = pgTable(
   "chats",
@@ -52,8 +52,31 @@ export const chats = pgTable(
     lastMessageAt: timestamp("last_message_at").defaultNow().notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
-  (table) => [index("chats_user_id_idx").on(table.userId)],
-);
+  (table) => [index("chats_user_id_idx").on(table.userId)]
+)
+
+export const insertChatSchema = createInsertSchema(chats, {
+  name: z.string().trim().min(1, "Group name is required").max(100),
+})
+
+export const groupChatFormSchema = insertChatSchema
+  .omit({
+    id: true,
+    userId: true,
+    kind: true,
+    lastMessagePreview: true,
+    lastMessageAt: true,
+    createdAt: true,
+  })
+  .extend({
+    botIds: z
+      .array(z.string().min(1))
+      .min(2, "Select at least two bots")
+      .refine(
+        (ids) => new Set(ids).size === ids.length,
+        "Select each bot only once"
+      ),
+  })
 
 export const chatMembers = pgTable(
   "chat_members",
@@ -69,16 +92,16 @@ export const chatMembers = pgTable(
   (table) => [
     primaryKey({ columns: [table.chatId, table.botId] }),
     index("chat_members_bot_id_idx").on(table.botId),
-  ],
-);
+  ]
+)
 
 export const botsRelations = relations(bots, ({ many }) => ({
   memberships: many(chatMembers),
-}));
+}))
 
 export const chatsRelations = relations(chats, ({ many }) => ({
   members: many(chatMembers),
-}));
+}))
 
 export const chatMembersRelations = relations(chatMembers, ({ one }) => ({
   chat: one(chats, {
@@ -89,4 +112,4 @@ export const chatMembersRelations = relations(chatMembers, ({ one }) => ({
     fields: [chatMembers.botId],
     references: [bots.id],
   }),
-}));
+}))

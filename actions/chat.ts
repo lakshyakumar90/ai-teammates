@@ -37,12 +37,15 @@ export async function startChatSession({
   clientData,
 }: {
   chatId: string
-  clientData?: { modelId: string }
+  clientData?: { modelId: string; botId?: string }
 }) {
   return chatAction(async () => {
     await requireChatOwner(chatId)
     const modelId = clientData?.modelId ?? defaultModelId
-    return startSession({ chatId, clientData: { modelId } })
+    return startSession({
+      chatId,
+      clientData: { modelId, botId: clientData?.botId },
+    })
   })
 }
 

@@ -44,11 +44,18 @@ import {
   PromptInputButton,
   PromptInputFooter,
   PromptInputHeader,
+  PromptInputSelect,
+  PromptInputSelectTrigger,
+  PromptInputSelectContent,
+  PromptInputSelectItem,
+  PromptInputSelectValue,
   PromptInputSubmit,
   PromptInputTextarea,
   PromptInputTools,
   usePromptInputAttachments,
 } from "@/components/ai-elements/prompt-input"
+import { ChatAvatar } from "@/components/chat-avatar"
+import type { GroupAvatarBot } from "@/components/group-chat-avatar"
 import { Button } from "@/components/ui/button"
 import {
   Tool,
@@ -111,6 +118,7 @@ function ComposerSubmit({
 
 type ChatProps = {
   chatId: string
+  groupBots?: GroupAvatarBot[]
   defaultModelId: ModelId
   modelOptions: ModelOption[]
 }
@@ -177,10 +185,15 @@ function ChatView({
   modelOptions,
   transport,
   initialMessages,
+  groupBots,
 }: ChatProps & {
   transport: TriggerChatTransport
   initialMessages: UIMessage[]
 }) {
+  const [selectedBotId, setSelectedBotId] = useState(groupBots?.[0]?.id)
+  const selectedBot =
+    groupBots?.find((bot) => bot.id === selectedBotId) ?? groupBots?.[0]
+  const botId = selectedBot?.id
   const [input, setInput] = useState("")
   const [selectedModelId, setModelId] = useState<ModelId>(defaultModelId)
   const [modelPickerOpen, setModelPickerOpen] = useState(false)
@@ -336,7 +349,8 @@ function ChatView({
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  if (!pending) void regenerate({ metadata: { modelId } })
+                  if (!pending)
+                    void regenerate({ metadata: { modelId, botId } })
                 }}
               >
                 Retry
@@ -368,7 +382,7 @@ function ChatView({
             setAttachmentError(undefined)
             void sendMessage(
               { text: text.trim(), files },
-              { metadata: { modelId } }
+              { metadata: { modelId, botId } }
             )
             setInput("")
           }}
@@ -383,7 +397,38 @@ function ChatView({
             />
           </PromptInputBody>
           <PromptInputFooter>
-            <PromptInputTools className="min-w-0">
+            <PromptInputTools className="min-w-0 flex-wrap">
+              {groupBots ? (
+                <PromptInputSelect
+                  value={botId}
+                  onValueChange={(value) => {
+                    if (typeof value === "string") setSelectedBotId(value)
+                  }}
+                  disabled={pending}
+                >
+                  <PromptInputSelectTrigger
+                    aria-label="Choose which bot to talk to"
+                    className="max-w-40"
+                  >
+                    {selectedBot ? (
+                      <ChatAvatar
+                        seed={selectedBot.avatar}
+                        className="size-5 shrink-0 rounded-full"
+                      />
+                    ) : null}
+                    <PromptInputSelectValue>
+                      {selectedBot?.name ?? "Choose a bot"}
+                    </PromptInputSelectValue>
+                  </PromptInputSelectTrigger>
+                  <PromptInputSelectContent>
+                    {groupBots.map((bot) => (
+                      <PromptInputSelectItem key={bot.id} value={bot.id}>
+                        {bot.name}
+                      </PromptInputSelectItem>
+                    ))}
+                  </PromptInputSelectContent>
+                </PromptInputSelect>
+              ) : null}
               <PromptInputActionMenu>
                 <PromptInputActionMenuTrigger
                   aria-label="Add attachments"

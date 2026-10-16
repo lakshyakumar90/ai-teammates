@@ -3,7 +3,7 @@ import { z } from "zod"
 import { stepCountIs, validateUIMessages } from "ai"
 
 import { buildBotInstructions } from "../lib/ai/bot-instructions"
-import { getChatBot } from "../lib/ai/bot-context"
+import { getChatBot, isGroupChat } from "../lib/ai/bot-context"
 import { createComputerTools, getChatSandbox } from "../lib/ai/computer-tools"
 import { getModel, modelOptions } from "../lib/ai/models"
 import { ChatRequestError, chatErrorMessage } from "../lib/ai/chat-error"
@@ -11,18 +11,25 @@ import { ChatRequestError, chatErrorMessage } from "../lib/ai/chat-error"
 export const chatAgent = chat.agent({
   id: "chat-agent",
   storage: defaultStorage,
-  clientDataSchema: z.object({ modelId: z.string() }),
-  tools: ({ chatId, clientData }) =>
-    createComputerTools(
-      () => getChatSandbox(chatId),
-      modelOptions.find(({ id }) => id === clientData?.modelId)
-        ?.supportsImages ?? false
-    ),
+  clientDataSchema: z.object({
+    modelId: z.string(),
+    botId: z.string().min(1).optional(),
+  }),
+  tools: async ({ chatId, clientData }) =>
+    (await isGroupChat(chatId))
+      ? {}
+      : createComputerTools(
+          () => getChatSandbox(chatId),
+          modelOptions.find(({ id }) => id === clientData?.modelId)
+            ?.supportsImages ?? false
+        ),
   onValidateMessages: async ({ chatId, messages }) => {
     try {
       return await validateUIMessages({
         messages,
-        tools: createComputerTools(() => getChatSandbox(chatId), false),
+        tools: (await isGroupChat(chatId))
+          ? {}
+          : createComputerTools(() => getChatSandbox(chatId), false),
       })
     } catch {
       throw new ChatRequestError(
@@ -58,10 +65,18 @@ export const chatAgent = chat.agent({
       )
     }
     try {
-      const bot = await getChatBot(chatId)
+      const group = await isGroupChat(chatId)
+      const bot = await getChatBot(chatId, clientData.botId)
       return streamText({
         model: getModel(clientData.modelId),
-        instructions: buildBotInstructions(bot),
+        instructions: group
+          ? [
+              `Your name is ${JSON.stringify(bot.name)}.`,
+              `Your job is ${JSON.stringify(bot.job)}.`,
+              "Respond to the user as this bot for this turn. Other assistant messages may be from other group members.",
+              bot.instructions ?? "",
+            ].join("\n\n")
+          : buildBotInstructions(bot),
         messages,
         tools,
         stopWhen: stepCountIs(20),
