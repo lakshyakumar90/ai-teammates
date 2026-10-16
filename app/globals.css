@@ -7,6 +7,24 @@
 
 @custom-variant dark (&:is(.dark *));
 
+.prompt-input-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted-foreground) transparent;
+}
+
+.prompt-input-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.prompt-input-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.prompt-input-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--muted-foreground);
+  border-radius: 999px;
+}
+
 @theme inline {
     --font-heading: var(--font-sans);
     --font-sans: var(--font-sans);

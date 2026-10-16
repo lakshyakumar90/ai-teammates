@@ -907,8 +907,12 @@ export const PromptInputTextarea = ({
 
   return (
     <InputGroupTextarea
-      className={cn("field-sizing-content max-h-48 min-h-16", className)}
+      className={cn(
+        "prompt-input-scrollbar field-sizing-content max-h-[100px] min-h-16 w-full max-w-full min-w-0 flex-none overflow-x-hidden overflow-y-auto [overflow-wrap:anywhere] whitespace-pre-wrap",
+        className
+      )}
       name="message"
+      wrap="soft"
       onCompositionEnd={() => setIsComposing(false)}
       onCompositionStart={() => setIsComposing(true)}
       onKeyDown={handleKeyDown}

@@ -14,9 +14,14 @@ export default async function DashboardLayout({
   const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
 
   return (
-    <SidebarProvider defaultOpen={defaultOpen}>
+    <SidebarProvider
+      defaultOpen={defaultOpen}
+      className="h-dvh min-h-0 overflow-hidden"
+    >
       <AppSidebar chats={chats} />
-      <SidebarInset>{children}</SidebarInset>
+      <SidebarInset className="min-h-0 min-w-0 overflow-x-hidden overflow-y-auto">
+        {children}
+      </SidebarInset>
     </SidebarProvider>
   );
 }

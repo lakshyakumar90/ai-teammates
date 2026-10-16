@@ -5,6 +5,7 @@ import { MonitorIcon } from "lucide-react";
 
 import { BotDialog, type BotEdit } from "@/components/bot-dialog";
 import { ChatAvatar } from "@/components/chat-avatar";
+import { useChatDesktop } from "@/components/chat-desktop";
 import { Button } from "@/components/ui/button";
 
 export function ChatHeader({
@@ -17,6 +18,7 @@ export function ChatHeader({
   bot?: BotEdit | null;
 }) {
   const [editOpen, setEditOpen] = React.useState(false);
+  const desktop = useChatDesktop();
 
   return (
     <header className="flex items-center justify-between gap-2 p-2">
@@ -41,11 +43,24 @@ export function ChatHeader({
           <span className="truncate font-medium">{title}</span>
         </div>
       )}
-      <Button size="icon" variant="ghost">
+      <Button
+        type="button"
+        size="icon"
+        variant="ghost"
+        aria-label={desktop.open ? "Hide desktop panel" : "Show desktop panel"}
+        aria-expanded={desktop.open}
+        aria-controls={desktop.open ? "chat-desktop" : undefined}
+        onClick={desktop.toggle}
+      >
         <MonitorIcon />
       </Button>
       {bot ? (
-        <BotDialog key={bot.id} open={editOpen} onOpenChange={setEditOpen} bot={bot} />
+        <BotDialog
+          key={bot.id}
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          bot={bot}
+        />
       ) : null}
     </header>
   );

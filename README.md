@@ -10,6 +10,10 @@ files, and control the bot's sandbox desktop. The worker needs `DAYTONA_API_KEY`
 Stopped sandboxes resume on the first tool call; desktop services start lazily.
 Desktop interaction needs an image-capable model. `viewScreen` observations stay
 hidden in chat; `showScreen` displays a screenshot when the user asks to see it.
+The desktop header button opens a live VNC preview. Click the preview for an
+interactive fullscreen dialog; use its exit button to return. The same VNC
+connection is retained across these views and when hiding the side panel.
+VNC access is checked against chat ownership and uses an expiring, signed port URL.
 Local Ministral 3 models are marked as vision-capable. For another Ollama model,
 set `OLLAMA_SUPPORTS_IMAGES=true` or `false` to match its `/api/show` capabilities,
 then restart both Next.js and the Trigger.dev worker.

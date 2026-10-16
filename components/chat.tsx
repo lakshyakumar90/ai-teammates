@@ -216,7 +216,7 @@ function ChatView({
       !lastMessage.parts.some((part) => part.type === "text" && part.text))
 
   return (
-    <div className="grid min-h-0 min-w-0 flex-1 grid-rows-[minmax(0,1fr)_auto] overflow-hidden">
+    <div className="grid min-h-0 w-full min-w-0 flex-1 grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)_auto] overflow-hidden">
       <Conversation
         className="min-h-0 min-w-0 overflow-hidden"
         aria-label="Chat messages"
@@ -285,7 +285,10 @@ function ChatView({
                     }
                     if (part.type === "text") {
                       return message.role === "user" ? (
-                        <p key={index} className="whitespace-pre-wrap">
+                        <p
+                          key={index}
+                          className="[overflow-wrap:anywhere] whitespace-pre-wrap"
+                        >
                           {part.text}
                         </p>
                       ) : (
@@ -319,7 +322,7 @@ function ChatView({
         </ConversationContent>
         <ConversationScrollButton aria-label="Scroll to latest message" />
       </Conversation>
-      <div className="flex shrink-0 flex-col gap-2 p-2 sm:p-3">
+      <div className="flex min-w-0 shrink-0 flex-col gap-2 p-2 sm:p-3">
         {(error || attachmentError) && (
           <div role="alert" className="flex flex-wrap items-center gap-2 px-1">
             <FieldError>
@@ -342,6 +345,7 @@ function ChatView({
           </div>
         )}
         <PromptInput
+          className="max-w-full min-w-0"
           onSubmitCapture={(event) => {
             if (pending) {
               event.preventDefault()
