@@ -133,6 +133,10 @@ export function BotDialog({
       } else {
         const result = await createBot({ ...values, avatar: faceSeed });
         if (handleBillingFailure(result)) return;
+        if ("error" in result) {
+          setServerError(result.error);
+          return;
+        }
         toast.add({
           title: "Bot created",
           description: `${values.name} is ready to chat.`,

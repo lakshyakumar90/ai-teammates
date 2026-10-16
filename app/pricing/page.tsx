@@ -40,9 +40,9 @@ export default async function PricingPage() {
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-x-6 gap-y-3 text-sm">
             {[
-              "Bots & group chats",
-              "All memory levels",
-              "Sandbox & desktop access",
+              "Up to 3 bots & group chats",
+              "$5 AI allowance per period",
+              "20 sandbox hours per period",
             ].map((feature) => (
               <span key={feature} className="inline-flex items-center gap-2">
                 <CheckIcon className="size-4 text-muted-foreground" />
@@ -67,7 +67,10 @@ export default async function PricingPage() {
         <p className="mx-auto mt-8 max-w-xl text-center text-sm leading-relaxed text-muted-foreground">
           Free accounts can sign in and view plans. Creating or using bots and
           sandboxes requires Pro. Manage your subscription through your account
-          menu.
+          menu. Pro includes one running sandbox at a time and up to 1,000 model
+          requests per billing period. Both the AI cost allowance and request
+          limit apply. Sessions stop after 15 minutes; reconnect to continue.
+          Usage resets with your subscription. No automatic overage charges.
         </p>
         <div className="mt-10 text-center">
           <Link

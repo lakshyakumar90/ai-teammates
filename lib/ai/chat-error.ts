@@ -3,6 +3,7 @@ import { ApiError } from "@trigger.dev/sdk"
 
 import { ModelConfigurationError } from "./models"
 import { PaidPlanRequiredError } from "../billing-policy"
+import { UsageLimitError } from "../usage-policy"
 
 export class ChatRequestError extends Error {}
 
@@ -36,6 +37,7 @@ export function chatErrorMessage(
     return chatErrorMessage(error.lastError, providerName)
   if (
     error instanceof PaidPlanRequiredError ||
+    error instanceof UsageLimitError ||
     error instanceof ChatRequestError ||
     error instanceof ModelConfigurationError
   ) {

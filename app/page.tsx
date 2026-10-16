@@ -439,7 +439,7 @@ export default async function LandingPage() {
             <p>
               Bots, group chats, memory, and cloud computers.
               <br />
-              All features, with one Pro subscription.
+              Up to 3 bots, $5 of AI usage, and 20 sandbox hours per period.
             </p>
           </div>
           <div>

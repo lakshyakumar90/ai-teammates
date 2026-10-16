@@ -2,6 +2,8 @@ import { relations } from "drizzle-orm"
 import {
   index,
   boolean,
+  integer,
+  bigint,
   pgEnum,
   pgTable,
   primaryKey,
@@ -11,6 +13,61 @@ import {
 import { createInsertSchema } from "drizzle-zod"
 import { nanoid } from "nanoid"
 import { z } from "zod"
+
+export const usagePeriods = pgTable(
+  "usage_periods",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+    endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+    aiMicros: bigint("ai_micros", { mode: "number" }).notNull().default(0),
+    aiCalls: integer("ai_calls").notNull().default(0),
+    sandboxSeconds: integer("sandbox_seconds").notNull().default(0),
+    botCreations: integer("bot_creations").notNull().default(0),
+  },
+  (t) => [index("usage_periods_user_idx").on(t.userId)]
+)
+
+export const usageEntries = pgTable(
+  "usage_entries",
+  {
+    id: text("id").primaryKey(),
+    periodId: text("period_id")
+      .notNull()
+      .references(() => usagePeriods.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    modelId: text("model_id"),
+    amount: bigint("amount", { mode: "number" }).notNull(),
+    inputTokens: integer("input_tokens"),
+    outputTokens: integer("output_tokens"),
+    settled: boolean("settled").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index("usage_entries_period_idx").on(t.periodId)]
+)
+
+// One runtime lease per user, including provisioning and stopping. Never
+// discard an expired lease until Daytona confirms that its sandbox stopped.
+export const sandboxLeases = pgTable("sandbox_leases", {
+  userId: text("user_id").primaryKey(),
+  id: text("id").notNull().unique(),
+  sandboxId: text("sandbox_id").notNull(),
+  entryId: text("entry_id"),
+  startsAt: timestamp("starts_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+  ready: boolean("ready").notNull().default(false),
+  stoppingUntil: timestamp("stopping_until", { withTimezone: true }),
+})
+
+export const botCapacity = pgTable("bot_capacity", {
+  userId: text("user_id").primaryKey(),
+  count: integer("count").notNull().default(0),
+})
 
 export const bots = pgTable(
   "bots",

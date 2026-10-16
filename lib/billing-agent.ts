@@ -12,6 +12,7 @@ export async function requireUserPaidPlan(userId: string) {
       secretKey,
     }).billing.getUserBillingSubscription(userId)
     if (!hasPaidSubscription(subscription)) throw new PaidPlanRequiredError()
+    return subscription
   } catch (error) {
     if (
       typeof error === "object" &&

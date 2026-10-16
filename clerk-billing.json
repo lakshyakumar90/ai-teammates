@@ -23,7 +23,7 @@
       },
       "pro": {
         "name": "Pro",
-        "description": "All AI Teammates features, including bots, group chats, memory, and cloud computers.",
+        "description": "Up to 3 bots, $5 AI allowance and 1,000 model requests, 20 sandbox hours per billing period, and one running sandbox at a time.",
         "amount": 2000,
         "currency": "usd",
         "payer_type": "user",

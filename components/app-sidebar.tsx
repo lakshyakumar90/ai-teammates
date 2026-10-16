@@ -9,9 +9,11 @@ import {
   UsersIcon,
   BrainIcon,
   CreditCardIcon,
+  ChartNoAxesCombinedIcon,
+  UserRoundIcon,
 } from "lucide-react"
 import Link from "next/link"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, usePathname, useRouter } from "next/navigation"
 
 import { GroupChatDialog } from "@/components/group-chat-dialog"
 import {
@@ -19,7 +21,6 @@ import {
   type GroupAvatarBot,
 } from "@/components/group-chat-avatar"
 import { BotDialog } from "@/components/bot-dialog"
-import { MemorySettingsDialog } from "@/components/memory-settings-dialog"
 import { usePaidAccess } from "@/components/paid-access"
 import { Button } from "@/components/ui/button"
 import { ChatAvatar } from "@/components/chat-avatar"
@@ -51,8 +52,13 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import type { ChatWithBot } from "@/queries/bots"
+
+const subscribeToHydration = () => () => {}
+const clientHydrationSnapshot = () => true
+const serverHydrationSnapshot = () => false
 
 export function AppSidebar({
   chats,
@@ -67,6 +73,13 @@ export function AppSidebar({
   const router = useRouter()
   const requirePaidAccess = usePaidAccess()
   const params = useParams()
+  const pathname = usePathname()
+  const { setOpenMobile } = useSidebar()
+  const hydrated = React.useSyncExternalStore(
+    subscribeToHydration,
+    clientHydrationSnapshot,
+    serverHydrationSnapshot
+  )
   const routeChatId = params.chatId
   const activeChatId = Array.isArray(routeChatId) ? routeChatId[0] : routeChatId
 
@@ -83,7 +96,7 @@ export function AppSidebar({
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader>
+      <SidebarHeader className="shrink-0">
         <div className="flex flex-row justify-end">
           <DropdownMenu>
             <DropdownMenuTrigger
@@ -127,7 +140,7 @@ export function AppSidebar({
           <Kbd className="group-data-[collapsible=icon]:hidden">⌘K</Kbd>
         </Button>
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto group-data-[collapsible=icon]:overflow-y-auto">
         {chats.length > 0 ? (
           <SidebarGroup>
             <SidebarGroupContent>
@@ -179,44 +192,67 @@ export function AppSidebar({
           </SidebarGroup>
         ) : null}
       </SidebarContent>
-      <SidebarFooter>
+      <SidebarFooter className="shrink-0 border-t border-sidebar-border">
         <SidebarMenu>
           <SidebarMenuItem>
-            <MemorySettingsDialog>
-              <SidebarMenuButton tooltip="Memory & privacy">
-                <BrainIcon />
-                <span>Memory & privacy</span>
-              </SidebarMenuButton>
-            </MemorySettingsDialog>
+            <SidebarMenuButton
+              tooltip="Usage & Billing"
+              onClick={() => setOpenMobile(false)}
+              render={<Link href="/usage" />}
+              isActive={pathname === "/usage" || pathname === "/billing"}
+            >
+              <ChartNoAxesCombinedIcon />
+              <span>Usage & Billing</span>
+            </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
-              size="lg"
-              render={
-                <UserButton
-                  showName
-                  appearance={{
-                    elements: {
-                      rootBox: "w-full",
-                      userButtonBox: "w-full",
-                      userButtonTrigger:
-                        "flex! w-full! items-center! justify-start! gap-2! rounded-md! p-2! text-sm! hover:bg-sidebar-accent! hover:text-sidebar-accent-foreground! focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:outline-hidden group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:justify-center! group-data-[collapsible=icon]:p-0!",
-                      userButtonAvatarBox: "order-first size-8 shrink-0",
-                      userButtonOuterIdentifier:
-                        "order-last min-w-0 flex-1 truncate text-left text-sm text-sidebar-foreground group-data-[collapsible=icon]:hidden",
-                    },
-                  }}
-                >
-                  <UserButton.MenuItems>
-                    <UserButton.Link
-                      label="Billing & plans"
-                      labelIcon={<CreditCardIcon />}
-                      href="/billing"
-                    />
-                  </UserButton.MenuItems>
-                </UserButton>
-              }
-            />
+              tooltip="Memory & privacy"
+              onClick={() => setOpenMobile(false)}
+              render={<Link href="/memory" />}
+              isActive={pathname === "/memory"}
+            >
+              <BrainIcon />
+              <span>Memory & privacy</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            {hydrated ? (
+              <SidebarMenuButton
+                size="lg"
+                render={
+                  <UserButton
+                    showName
+                    appearance={{
+                      elements: {
+                        rootBox: "w-full",
+                        userButtonBox: "w-full",
+                        userButtonTrigger:
+                          "flex! w-full! items-center! justify-start! gap-2! rounded-md! p-2! text-sm! hover:bg-sidebar-accent! hover:text-sidebar-accent-foreground! focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:outline-hidden group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:justify-center! group-data-[collapsible=icon]:p-0!",
+                        userButtonAvatarBox: "order-first size-8 shrink-0",
+                        userButtonOuterIdentifier:
+                          "order-last min-w-0 flex-1 truncate text-left text-sm text-sidebar-foreground group-data-[collapsible=icon]:hidden",
+                      },
+                    }}
+                  >
+                    <UserButton.MenuItems>
+                      <UserButton.Link
+                        label="Usage"
+                        labelIcon={<ChartNoAxesCombinedIcon />}
+                        href="/usage"
+                      />
+                      <UserButton.Link
+                        label="Billing & plans"
+                        labelIcon={<CreditCardIcon />}
+                        href="/billing"
+                      />
+                    </UserButton.MenuItems>
+                  </UserButton>
+                }
+              />
+            ) : (
+              <div className="h-12" aria-hidden="true" />
+            )}
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>

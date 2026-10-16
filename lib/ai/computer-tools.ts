@@ -3,7 +3,7 @@ import { tool } from "ai"
 import { z } from "zod"
 
 import { getChatBot } from "./bot-context"
-import { createDaytonaClient } from "../daytona-client"
+import { managedSandbox } from "../sandbox-usage"
 import { requireUserPaidPlan } from "../billing-agent"
 import {
   ChatRequestError,
@@ -25,17 +25,13 @@ export async function getChatSandbox(chatId: string, botId?: string) {
   await requireUserPaidPlan(bot.userId)
   if (!bot.sandboxId)
     throw new ChatRequestError("This bot has no Daytona sandbox.")
-  const sandbox = await createDaytonaClient().get(bot.sandboxId)
-  if (sandbox.state !== "started") await sandbox.start()
-  return sandbox
+  return managedSandbox(bot.userId, bot.sandboxId)
 }
 
 export function createComputerTools(
   resolveSandbox: () => Promise<Sandbox>,
   supportsImages: boolean
 ) {
-  let sandboxPromise: Promise<Sandbox> | undefined
-  let desktopPromise: Promise<unknown> | undefined
   let queue: Promise<unknown> = Promise.resolve()
 
   // Models can request several actions in one step. Preserve desktop/file order.
@@ -47,10 +43,10 @@ export function createComputerTools(
     const result = queue.then(async () => {
       signal?.throwIfAborted()
       try {
-        const sandbox = await (sandboxPromise ??= resolveSandbox())
+        const sandbox = await resolveSandbox()
         signal?.throwIfAborted()
         if (desktop) {
-          await (desktopPromise ??= sandbox.computerUse.start())
+          await sandbox.computerUse.start()
           signal?.throwIfAborted()
         }
         const output = await operation(sandbox)

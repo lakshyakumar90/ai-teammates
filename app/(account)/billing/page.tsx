@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Billing & account — AI Teammates" 
 export default async function BillingPage() {
   await auth.protect()
   return (
-    <main className="min-h-svh bg-background px-4 py-8 text-foreground sm:px-8">
+    <section className="min-w-0 flex-1 bg-background px-4 py-8 text-foreground sm:px-8">
       <header className="mx-auto mb-8 flex max-w-5xl flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">
@@ -33,8 +33,16 @@ export default async function BillingPage() {
         </div>
       </header>
       <div className="flex justify-center">
-        <UserProfile routing="hash" />
+        <UserProfile
+          routing="hash"
+          appearance={{
+            elements: {
+              rootBox: "w-full max-w-5xl",
+              cardBox: "w-full max-w-full",
+            },
+          }}
+        />
       </div>
-    </main>
+    </section>
   )
 }

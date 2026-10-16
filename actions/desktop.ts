@@ -9,6 +9,7 @@ import { sanitizeDetail } from "@/lib/ai/chat-error"
 import { getChat } from "@/queries/chats"
 import { getPaidAccessError } from "@/lib/billing"
 import type { BillingFailure } from "@/lib/billing-policy"
+import { UsageLimitError } from "@/lib/usage-policy"
 
 export async function loadChatDesktop(
   chatId: string
@@ -28,13 +29,15 @@ export async function loadChatDesktop(
       return { error: "Group chats do not have a desktop." }
     const sandboxId = chat.members[0]?.bot.sandboxId
     if (!sandboxId) return { error: "This bot has no Daytona sandbox." }
-    return { url: await getSandboxVncUrl(sandboxId) }
+    return { url: await getSandboxVncUrl(sandboxId, userId) }
   } catch (error) {
     return {
       error:
-        error instanceof DaytonaError
-          ? `Daytona${error.statusCode ? ` (HTTP ${error.statusCode})` : ""}: ${sanitizeDetail(error.message)}`
-          : "Could not connect to the desktop. Please retry.",
+        error instanceof UsageLimitError
+          ? error.message
+          : error instanceof DaytonaError
+            ? `Daytona${error.statusCode ? ` (HTTP ${error.statusCode})` : ""}: ${sanitizeDetail(error.message)}`
+            : "Could not connect to the desktop. Please retry.",
     }
   }
 }

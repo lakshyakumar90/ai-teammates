@@ -16,7 +16,9 @@ import {
   createGroupWorkflow,
 } from "../lib/ai/group-handoff"
 import { createComputerTools, getChatSandbox } from "../lib/ai/computer-tools"
-import { getModel, modelOptions } from "../lib/ai/models"
+import { modelOptions } from "../lib/ai/models"
+import { meteredModel } from "../lib/ai/usage-model"
+import { ensureUsagePeriod } from "../lib/usage"
 import { responseTimeoutPolicy } from "../lib/ai/response-timeout"
 import { ChatRequestError, chatErrorMessage } from "../lib/ai/chat-error"
 import { requireUserPaidPlan } from "../lib/billing-agent"
@@ -101,7 +103,12 @@ export const chatAgent = chat.agent({
       const group = await isGroupChat(chatId)
       const bot = await getChatBot(chatId, clientData.botId)
       await requireUserPaidPlan(bot.userId)
-      const model = getModel(clientData.modelId)
+      const period = await ensureUsagePeriod(bot.userId)
+      const model = await meteredModel(
+        clientData.modelId,
+        bot.userId,
+        period.id
+      )
       const memory = await getChatMemory(chatId, bot.id)
       const snapshot = await memory.read()
       const facts = memory.preferences.automaticMemory

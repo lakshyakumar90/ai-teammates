@@ -60,18 +60,22 @@ const settings = [
 
 export function MemorySettingsDialog({
   children,
+  inline = false,
+  initialPreferences,
 }: {
-  children: React.ReactElement
+  children?: React.ReactElement
+  inline?: boolean
+  initialPreferences?: z.infer<typeof memoryPreferencesFormSchema>
 }) {
   const [open, setOpen] = React.useState(false)
   const [loading, setLoading] = React.useState(false)
-  const [loaded, setLoaded] = React.useState(false)
+  const [loaded, setLoaded] = React.useState(inline)
   const [error, setError] = React.useState<string>()
   const router = useRouter()
   const requirePaidAccess = usePaidAccess()
   const form = useForm<z.infer<typeof memoryPreferencesFormSchema>>({
     resolver: zodResolver(memoryPreferencesFormSchema),
-    defaultValues: defaultMemoryPreferences,
+    defaultValues: initialPreferences ?? defaultMemoryPreferences,
   })
   const values = useWatch({ control: form.control })
   const pending = loading || form.formState.isSubmitting
@@ -92,9 +96,72 @@ export function MemorySettingsDialog({
       setLoading(false)
     }
   }
+  const FormFooter = inline ? "div" : DialogFooter
+  const settingsForm = (
+    <form
+      className="flex flex-col gap-5"
+      onSubmit={form.handleSubmit(async (input) => {
+        if (!requirePaidAccess()) return
+        setError(undefined)
+        try {
+          const result = await updateMemoryPreferences(input)
+          if (handleBillingFailure(result)) return
+          toast.add({ title: "Memory settings updated", type: "success" })
+          setOpen(false)
+          router.refresh()
+        } catch {
+          setError("Could not save your memory settings. Try again.")
+        }
+      })}
+    >
+      <FieldGroup>
+        {settings.map(({ key, label, description }) => (
+          <Field key={key} data-invalid={!!form.formState.errors[key]}>
+            <FieldLabel id={`memory-${key}`}>{label}</FieldLabel>
+            <FieldDescription>{description}</FieldDescription>
+            <ToggleGroup
+              aria-labelledby={`memory-${key}`}
+              aria-invalid={!!form.formState.errors[key]}
+              disabled={pending}
+              variant="outline"
+              size="sm"
+              value={[values[key] ? "on" : "off"]}
+              onValueChange={(selected) => {
+                if (selected.length)
+                  form.setValue(key, selected[0] === "on", {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  })
+              }}
+            >
+              <ToggleGroupItem value="on">On</ToggleGroupItem>
+              <ToggleGroupItem value="off">Off</ToggleGroupItem>
+            </ToggleGroup>
+            <FieldError errors={[form.formState.errors[key]]} />
+          </Field>
+        ))}
+        {error ? <FieldError>{error}</FieldError> : null}
+      </FieldGroup>
+      <FormFooter className="flex justify-end gap-2">
+        {!inline && (
+          <DialogClose
+            render={
+              <Button variant="outline" disabled={pending}>
+                Cancel
+              </Button>
+            }
+          />
+        )}
+        <Button type="submit" disabled={pending || !loaded}>
+          {pending ? <Spinner data-icon="inline-start" /> : null}Save settings
+        </Button>
+      </FormFooter>
+    </form>
+  )
+  if (inline) return settingsForm
   return (
     <Dialog open={open} onOpenChange={changeOpen}>
-      <DialogTrigger render={children} />
+      {children && <DialogTrigger render={children} />}
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Memory & privacy</DialogTitle>
@@ -103,65 +170,16 @@ export function MemorySettingsDialog({
             responses; they do not remove past messages or saved notes.
           </DialogDescription>
         </DialogHeader>
-        <form
-          className="flex flex-col gap-5"
-          onSubmit={form.handleSubmit(async (input) => {
-            if (!requirePaidAccess()) return
-            setError(undefined)
-            try {
-              const result = await updateMemoryPreferences(input)
-              if (handleBillingFailure(result)) return
-              toast.add({ title: "Memory settings updated", type: "success" })
-              setOpen(false)
-              router.refresh()
-            } catch {
-              setError("Could not save your memory settings. Try again.")
-            }
-          })}
-        >
-          <FieldGroup>
-            {settings.map(({ key, label, description }) => (
-              <Field key={key} data-invalid={!!form.formState.errors[key]}>
-                <FieldLabel id={`memory-${key}`}>{label}</FieldLabel>
-                <FieldDescription>{description}</FieldDescription>
-                <ToggleGroup
-                  aria-labelledby={`memory-${key}`}
-                  aria-invalid={!!form.formState.errors[key]}
-                  disabled={pending}
-                  variant="outline"
-                  size="sm"
-                  value={[values[key] ? "on" : "off"]}
-                  onValueChange={(selected) => {
-                    if (selected.length)
-                      form.setValue(key, selected[0] === "on", {
-                        shouldDirty: true,
-                        shouldValidate: true,
-                      })
-                  }}
-                >
-                  <ToggleGroupItem value="on">On</ToggleGroupItem>
-                  <ToggleGroupItem value="off">Off</ToggleGroupItem>
-                </ToggleGroup>
-                <FieldError errors={[form.formState.errors[key]]} />
-              </Field>
-            ))}
-            {error ? <FieldError>{error}</FieldError> : null}
-          </FieldGroup>
-          <DialogFooter>
-            <DialogClose
-              render={
-                <Button variant="outline" disabled={pending}>
-                  Cancel
-                </Button>
-              }
-            />
-            <Button type="submit" disabled={pending || !loaded}>
-              {pending ? <Spinner data-icon="inline-start" /> : null}Save
-              settings
-            </Button>
-          </DialogFooter>
-        </form>
+        {settingsForm}
       </DialogContent>
     </Dialog>
   )
+}
+
+export function MemorySettingsForm({
+  initialPreferences,
+}: {
+  initialPreferences: z.infer<typeof memoryPreferencesFormSchema>
+}) {
+  return <MemorySettingsDialog inline initialPreferences={initialPreferences} />
 }

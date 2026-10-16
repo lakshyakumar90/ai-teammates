@@ -9,6 +9,14 @@ import { createBotSandbox, deleteBotSandbox } from "@/lib/daytona"
 import { db } from "@/lib/db"
 import { bots, chatMembers, chats, insertBotSchema } from "@/lib/db/schema"
 import { getPaidAccessError } from "@/lib/billing"
+import {
+  ensureUsagePeriod,
+  reserveBotCapacity,
+  releaseBotCapacity,
+  reserveUsage,
+  refundUsage,
+} from "@/lib/usage"
+import { UsageLimitError } from "@/lib/usage-policy"
 
 const createBotSchema = insertBotSchema.omit({
   id: true,
@@ -19,6 +27,15 @@ const createBotSchema = insertBotSchema.omit({
 export type CreateBotInput = Omit<z.infer<typeof createBotSchema>, "userId">
 
 export async function createBot(input: CreateBotInput) {
+  try {
+    return await createBotWithUsage(input)
+  } catch (error) {
+    if (error instanceof UsageLimitError) return { error: error.message }
+    throw error
+  }
+}
+
+async function createBotWithUsage(input: CreateBotInput) {
   const denied = await getPaidAccessError()
   if (denied) return denied
   const { userId } = await auth()
@@ -32,7 +49,23 @@ export async function createBot(input: CreateBotInput) {
   // can go out in a single batch.
   const botId = nanoid()
   const chatId = nanoid()
-  const sandbox = await createBotSandbox(botId)
+  const period = await ensureUsagePeriod(userId)
+  await reserveBotCapacity(userId)
+  let creationDebit: string
+  try {
+    creationDebit = await reserveUsage(period.id, "bot", 1)
+  } catch (error) {
+    await releaseBotCapacity(userId)
+    throw error
+  }
+  let sandbox
+  try {
+    sandbox = await createBotSandbox(botId, userId)
+  } catch (error) {
+    await refundUsage(creationDebit)
+    await releaseBotCapacity(userId)
+    throw error
+  }
   try {
     const [botRows, chatRows] = await db.batch([
       db
@@ -47,6 +80,8 @@ export async function createBot(input: CreateBotInput) {
     // The batch is transactional; remove its sandbox if no bot was saved.
     try {
       await deleteBotSandbox(sandbox.id)
+      await releaseBotCapacity(userId)
+      await refundUsage(creationDebit)
     } catch (cleanupError) {
       throw new AggregateError(
         [error, cleanupError],
@@ -134,6 +169,7 @@ export async function deleteBot(input: z.infer<typeof deleteBotSchema>) {
   }
 
   // Drop chats left with no members so deleted bots vanish from the sidebar.
+  await releaseBotCapacity(userId)
   for (const { chatId } of memberships) {
     const remaining = await db
       .select({ chatId: chatMembers.chatId })
