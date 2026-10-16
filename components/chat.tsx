@@ -68,6 +68,7 @@ import {
   ToolInput,
   ToolOutput,
 } from "@/components/ai-elements/tool"
+import { groupMessageSegments } from "@/lib/ai/group-message-segments"
 import { isVisibleMessagePart, screenImageUrl } from "@/lib/ai/tool-display"
 import { DropdownMenuGroup } from "@/components/ui/dropdown-menu"
 import { FieldError } from "@/components/ui/field"
@@ -86,6 +87,20 @@ const messageBotSchema = z.object({
   avatar: z.string(),
 })
 
+function getMessageBot(message: UIMessage, latest = false) {
+  const botPart = latest
+    ? message.parts.findLast((part) => part.type === "data-bot")
+    : message.parts.find((part) => part.type === "data-bot")
+  const metadata = message.metadata
+  const saved =
+    botPart && "data" in botPart
+      ? botPart.data
+      : metadata && typeof metadata === "object" && "bot" in metadata
+        ? metadata.bot
+        : undefined
+  return messageBotSchema.safeParse(saved)
+}
+
 function MessageBotAvatar({
   message,
   bots,
@@ -93,15 +108,7 @@ function MessageBotAvatar({
   message: UIMessage
   bots: GroupAvatarBot[]
 }) {
-  const botPart = message.parts.find((part) => part.type === "data-bot")
-  const metadata = message.metadata
-  const savedBot =
-    botPart && "data" in botPart
-      ? botPart.data
-      : metadata && typeof metadata === "object" && "bot" in metadata
-        ? metadata.bot
-        : undefined
-  const result = messageBotSchema.safeParse(savedBot)
+  const result = getMessageBot(message)
   if (!result.success)
     return <GroupChatAvatar bots={bots} className="mt-1 size-7" />
   const { name, avatar } = result.data
@@ -112,6 +119,15 @@ function MessageBotAvatar({
       </span>
     </span>
   )
+}
+
+function MessageBotName({ message }: { message: UIMessage }) {
+  const result = getMessageBot(message)
+  return result.success ? (
+    <span className="text-xs font-medium text-muted-foreground">
+      {result.data.name}
+    </span>
+  ) : null
 }
 
 function ComposerAttachments() {
@@ -228,7 +244,17 @@ function ChatView({
   transport: TriggerChatTransport
   initialMessages: UIMessage[]
 }) {
-  const [selectedBotId, setSelectedBotId] = useState(groupBots?.[0]?.id)
+  const [selectedBotId, setSelectedBotId] = useState(() => {
+    const last = initialMessages.findLast(
+      (message) => message.role === "assistant"
+    )
+    const parsed = last
+      ? getMessageBot(last, true)
+      : messageBotSchema.safeParse(undefined)
+    return parsed.success && groupBots?.some((bot) => bot.id === parsed.data.id)
+      ? parsed.data.id
+      : groupBots?.[0]?.id
+  })
   const selectedBot =
     groupBots?.find((bot) => bot.id === selectedBotId) ?? groupBots?.[0]
   const botId = selectedBot?.id
@@ -252,6 +278,17 @@ function ChatView({
     transport,
     messages: initialMessages,
     resume: initialMessages.length > 0,
+    onFinish: ({ message, isAbort, isError }) => {
+      if (!groupBots) return
+      const parsed = getMessageBot(message, true)
+      if (
+        !isAbort &&
+        !isError &&
+        parsed.success &&
+        groupBots.some((bot) => bot.id === parsed.data.id)
+      )
+        setSelectedBotId(parsed.data.id)
+    },
   })
   const stop = () => {
     void stopLocal()
@@ -277,7 +314,17 @@ function ChatView({
           className="gap-4 px-3 py-4 sm:px-4"
         >
           {messages
-            .filter((message) => message.parts.some(isVisibleMessagePart))
+            .flatMap((message) =>
+              groupBots ? groupMessageSegments(message) : [message]
+            )
+            .filter(
+              (message) =>
+                message.parts.some(isVisibleMessagePart) ||
+                (groupBots &&
+                  pending &&
+                  message.id.startsWith(`${messages.at(-1)?.id}:bot:`) &&
+                  message.parts.some((part) => part.type === "data-bot"))
+            )
             .map((message) => (
               <Message
                 from={message.role}
@@ -295,6 +342,18 @@ function ChatView({
                   {message.role === "user" ? "You" : "Assistant"}
                 </span>
                 <MessageContent>
+                  {groupBots && message.role === "assistant" ? (
+                    <MessageBotName message={message} />
+                  ) : null}
+                  {pending && !message.parts.some(isVisibleMessagePart) ? (
+                    <span
+                      role="status"
+                      className="flex items-center gap-2 text-muted-foreground"
+                    >
+                      <Spinner />
+                      Preparing a response…
+                    </span>
+                  ) : null}
                   {message.parts.map((part, index) => {
                     if (!isVisibleMessagePart(part)) return null
                     if (isToolUIPart(part)) {
@@ -312,9 +371,25 @@ function ChatView({
                           <ToolHeader
                             type={`tool-${name}`}
                             state={part.state}
-                            title={name
-                              .replace(/([A-Z])/g, " $1")
-                              .replace(/^./, (letter) => letter.toUpperCase())}
+                            title={
+                              name === "handoff"
+                                ? `Hand off to ${
+                                    groupBots?.find((bot) => {
+                                      const input = part.input
+                                      return (
+                                        input &&
+                                        typeof input === "object" &&
+                                        "botId" in input &&
+                                        input.botId === bot.id
+                                      )
+                                    })?.name ?? "another bot"
+                                  }`
+                                : name
+                                    .replace(/([A-Z])/g, " $1")
+                                    .replace(/^./, (letter) =>
+                                      letter.toUpperCase()
+                                    )
+                            }
                           />
                           <ToolContent>
                             {name !== "showScreen" && (
@@ -358,7 +433,10 @@ function ChatView({
                           key={index}
                           isAnimating={
                             status === "streaming" &&
-                            message.id === messages.at(-1)?.id
+                            (message.id === messages.at(-1)?.id ||
+                              message.id.startsWith(
+                                `${messages.at(-1)?.id}:bot:`
+                              ))
                           }
                         >
                           {part.text}

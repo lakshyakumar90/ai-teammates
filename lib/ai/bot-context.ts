@@ -31,3 +31,12 @@ export async function isGroupChat(chatId: string) {
   })
   return conversation?.kind === "group"
 }
+
+export async function getGroupBots(chatId: string) {
+  const members = await db.query.chatMembers.findMany({
+    where: eq(chatMembers.chatId, chatId),
+    orderBy: [asc(chatMembers.joinedAt), asc(chatMembers.botId)],
+    with: { bot: true },
+  })
+  return members.map(({ bot }) => bot)
+}

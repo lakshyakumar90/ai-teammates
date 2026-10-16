@@ -2,10 +2,18 @@ import { chat, defaultStorage } from "@trigger.dev/sdk/ai"
 import { z } from "zod"
 import { stepCountIs, validateUIMessages } from "ai"
 
-import { buildBotInstructions } from "../lib/ai/bot-instructions"
-import { getChatBot, isGroupChat } from "../lib/ai/bot-context"
+import {
+  buildBotInstructions,
+  buildGroupBotInstructions,
+} from "../lib/ai/bot-instructions"
+import { getChatBot, getGroupBots, isGroupChat } from "../lib/ai/bot-context"
+import {
+  createGroupHandoffTools,
+  createGroupWorkflow,
+} from "../lib/ai/group-handoff"
 import { createComputerTools, getChatSandbox } from "../lib/ai/computer-tools"
 import { getModel, modelOptions } from "../lib/ai/models"
+import { responseTimeoutPolicy } from "../lib/ai/response-timeout"
 import { ChatRequestError, chatErrorMessage } from "../lib/ai/chat-error"
 
 export const chatAgent = chat.agent({
@@ -17,7 +25,7 @@ export const chatAgent = chat.agent({
   }),
   tools: async ({ chatId, clientData }) =>
     (await isGroupChat(chatId))
-      ? {}
+      ? createGroupHandoffTools(await getGroupBots(chatId), clientData?.botId)
       : createComputerTools(
           () => getChatSandbox(chatId),
           modelOptions.find(({ id }) => id === clientData?.modelId)
@@ -28,7 +36,7 @@ export const chatAgent = chat.agent({
       return await validateUIMessages({
         messages,
         tools: (await isGroupChat(chatId))
-          ? {}
+          ? createGroupHandoffTools(await getGroupBots(chatId))
           : createComputerTools(() => getChatSandbox(chatId), false),
       })
     } catch {
@@ -67,27 +75,52 @@ export const chatAgent = chat.agent({
     try {
       const group = await isGroupChat(chatId)
       const bot = await getChatBot(chatId, clientData.botId)
-      if (group) {
-        chat.response.write({
-          type: "data-bot",
-          data: { id: bot.id, name: bot.name, avatar: bot.avatar },
-        })
-      }
-      return streamText({
+      const common = {
         model: getModel(clientData.modelId),
-        instructions: group
-          ? [
-              `Your name is ${JSON.stringify(bot.name)}.`,
-              `Your job is ${JSON.stringify(bot.job)}.`,
-              "Respond to the user as this bot for this turn. Other assistant messages may be from other group members.",
-              bot.instructions ?? "",
-            ].join("\n\n")
-          : buildBotInstructions(bot),
         messages,
-        tools,
-        stopWhen: stepCountIs(20),
         abortSignal: signal,
         maxRetries: 0,
+        ...responseTimeoutPolicy({
+          signal,
+          provider: option.provider,
+          onTimeout: (errorText) =>
+            chat.response.write({ type: "error", errorText }),
+        }),
+      }
+      if (!group)
+        return streamText({
+          ...common,
+          instructions: buildBotInstructions(bot),
+          tools,
+          stopWhen: stepCountIs(20),
+        })
+
+      const members = await getGroupBots(chatId)
+      chat.setUIMessageStreamOptions({
+        onError: (error) => chatErrorMessage(error, option.provider),
+        messageMetadata: ({ part }) =>
+          part.type === "start"
+            ? { bot: { id: bot.id, name: bot.name, avatar: bot.avatar } }
+            : undefined,
+      })
+      return streamText({
+        ...common,
+        instructions: buildGroupBotInstructions(bot, members),
+        tools,
+        stopWhen: stepCountIs(4),
+        prepareStep: createGroupWorkflow({
+          bot,
+          messages,
+          resolveBot: (id) => getChatBot(chatId, id),
+          instructions: (active, handoff) =>
+            buildGroupBotInstructions(active, members, handoff),
+          onBotChange: (active) =>
+            chat.response.write({
+              type: "data-bot",
+              id: `bot-${active.id}`,
+              data: { id: active.id, name: active.name, avatar: active.avatar },
+            }),
+        }),
       })
     } catch (error) {
       throw new ChatRequestError(chatErrorMessage(error))
