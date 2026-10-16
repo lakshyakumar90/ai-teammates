@@ -81,6 +81,7 @@ export default async function ChatPage({
                         id: bot.id,
                         name: bot.name,
                         avatar: bot.avatar,
+                        job: bot.job,
                       }))
                     : undefined
                 }

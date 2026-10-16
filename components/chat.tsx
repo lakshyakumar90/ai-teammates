@@ -9,7 +9,7 @@ import type { TriggerChatTransport } from "@trigger.dev/sdk/chat"
 import { getToolName, isToolUIPart, type UIMessage } from "ai"
 import Image from "next/image"
 import { CheckIcon, ChevronDownIcon } from "lucide-react"
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { z } from "zod"
 
 import {
@@ -57,6 +57,12 @@ import {
 } from "@/components/ai-elements/prompt-input"
 import { ChatAvatar } from "@/components/chat-avatar"
 import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip"
+import { getMentionQuery, resolveBotMention } from "@/lib/ai/bot-mentions"
+import {
   GroupChatAvatar,
   type GroupAvatarBot,
 } from "@/components/group-chat-avatar"
@@ -85,6 +91,7 @@ const messageBotSchema = z.object({
   id: z.string(),
   name: z.string(),
   avatar: z.string(),
+  job: z.string().optional(),
 })
 
 function getMessageBot(message: UIMessage, latest = false) {
@@ -130,6 +137,39 @@ function MessageBotName({ message }: { message: UIMessage }) {
   ) : null
 }
 
+function MessageRecipientMention({
+  message,
+  bots,
+}: {
+  message: UIMessage
+  bots: (GroupAvatarBot & { job: string })[]
+}) {
+  const result = getMessageBot(message)
+  if (!result.success) return null
+  const bot = result.data
+  const job = bot.job ?? bots.find((member) => member.id === bot.id)?.job
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <span
+            tabIndex={0}
+            className="mr-1 font-medium text-sky-700 outline-none hover:underline focus-visible:underline dark:text-sky-300"
+          />
+        }
+      >
+        @{bot.name}
+      </TooltipTrigger>
+      <TooltipContent className="bg-zinc-900 text-zinc-50 [&>:last-child]:bg-zinc-900 [&>:last-child]:fill-zinc-900">
+        <span className="flex flex-col gap-0.5">
+          <span className="font-medium">{bot.name}</span>
+          {job ? <span className="text-zinc-300">{job}</span> : null}
+        </span>
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
 function ComposerAttachments() {
   const attachments = usePromptInputAttachments()
   if (!attachments.files.length) return null
@@ -172,7 +212,7 @@ function ComposerSubmit({
 
 type ChatProps = {
   chatId: string
-  groupBots?: GroupAvatarBot[]
+  groupBots?: (GroupAvatarBot & { job: string })[]
   defaultModelId: ModelId
   modelOptions: ModelOption[]
 }
@@ -259,6 +299,30 @@ function ChatView({
     groupBots?.find((bot) => bot.id === selectedBotId) ?? groupBots?.[0]
   const botId = selectedBot?.id
   const [input, setInput] = useState("")
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const [mentionQuery, setMentionQuery] =
+    useState<ReturnType<typeof getMentionQuery>>()
+  const [mentionIndex, setMentionIndex] = useState(0)
+  const mentionBots = mentionQuery
+    ? (groupBots ?? []).filter((bot) =>
+        `${bot.name} ${bot.job}`
+          .toLowerCase()
+          .includes(mentionQuery.query.toLowerCase())
+      )
+    : []
+  function chooseMention(bot: GroupAvatarBot) {
+    if (!mentionQuery) return
+    const text = `${input.slice(0, mentionQuery.start)}@${bot.name} ${input.slice(mentionQuery.end)}`
+    const caret = mentionQuery.start + bot.name.length + 2
+    setInput(text)
+    setSelectedBotId(bot.id)
+    setMentionQuery(undefined)
+    requestAnimationFrame(() => {
+      textareaRef.current?.focus()
+      textareaRef.current?.setSelectionRange(caret, caret)
+    })
+  }
+
   const [selectedModelId, setModelId] = useState<ModelId>(defaultModelId)
   const [modelPickerOpen, setModelPickerOpen] = useState(false)
   const [attachmentError, setAttachmentError] = useState<string>()
@@ -342,6 +406,14 @@ function ChatView({
                   {message.role === "user" ? "You" : "Assistant"}
                 </span>
                 <MessageContent>
+                  {groupBots &&
+                  message.role === "user" &&
+                  !message.parts.some((part) => part.type === "text") ? (
+                    <MessageRecipientMention
+                      message={message}
+                      bots={groupBots}
+                    />
+                  ) : null}
                   {groupBots && message.role === "assistant" ? (
                     <MessageBotName message={message} />
                   ) : null}
@@ -426,6 +498,18 @@ function ChatView({
                           key={index}
                           className="[overflow-wrap:anywhere] whitespace-pre-wrap"
                         >
+                          {groupBots &&
+                          index ===
+                            message.parts.findIndex(
+                              (part) => part.type === "text"
+                            ) ? (
+                            <>
+                              <MessageRecipientMention
+                                message={message}
+                                bots={groupBots}
+                              />{" "}
+                            </>
+                          ) : null}
                           {part.text}
                         </p>
                       ) : (
@@ -507,20 +591,146 @@ function ChatView({
               throw new Error(message)
             }
             setAttachmentError(undefined)
+            const recipient = groupBots
+              ? resolveBotMention(text, groupBots, botId)
+              : { text: text.trim(), bot: undefined }
+            if (!recipient.text && !files.length) return
+            if (recipient.bot) setSelectedBotId(recipient.bot.id)
+            setMentionQuery(undefined)
             void sendMessage(
-              { text: text.trim(), files },
-              { metadata: { modelId, botId } }
+              {
+                text: recipient.text,
+                files,
+                ...(groupBots && recipient.bot
+                  ? {
+                      metadata: {
+                        bot: {
+                          id: recipient.bot.id,
+                          name: recipient.bot.name,
+                          avatar: recipient.bot.avatar,
+                          job: recipient.bot.job,
+                        },
+                      },
+                    }
+                  : {}),
+              },
+              { metadata: { modelId, botId: recipient.bot?.id ?? botId } }
             )
             setInput("")
           }}
         >
           <ComposerAttachments />
-          <PromptInputBody>
+          <PromptInputBody className="relative block w-full min-w-0">
+            {groupBots && mentionQuery && !pending ? (
+              <div
+                role="listbox"
+                id="bot-mention-options"
+                aria-label="Mention a bot"
+                className="absolute bottom-full left-0 z-10 mb-2 max-h-56 w-full max-w-sm overflow-y-auto rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-border"
+              >
+                {mentionBots.length ? (
+                  mentionBots.map((bot, index) => (
+                    <button
+                      key={bot.id}
+                      id={`bot-mention-${bot.id}`}
+                      type="button"
+                      role="option"
+                      aria-selected={index === mentionIndex}
+                      className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm outline-none hover:bg-accent focus-visible:bg-accent ${index === mentionIndex ? "bg-accent" : ""}`}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => chooseMention(bot)}
+                    >
+                      <ChatAvatar
+                        seed={bot.avatar}
+                        className="size-6 shrink-0 rounded-full"
+                      />
+                      <span className="min-w-0 truncate">
+                        {bot.name}{" "}
+                        <span className="text-muted-foreground">
+                          ({bot.job})
+                        </span>
+                      </span>
+                    </button>
+                  ))
+                ) : (
+                  <p className="px-2 py-1.5 text-sm text-muted-foreground">
+                    No bots found.
+                  </p>
+                )}
+              </div>
+            ) : null}
             <PromptInputTextarea
+              ref={textareaRef}
               aria-label="Message"
-              placeholder="What would you like to know?"
+              role={groupBots ? "combobox" : undefined}
+              aria-expanded={groupBots ? !!mentionQuery && !pending : undefined}
+              aria-autocomplete={groupBots ? "list" : undefined}
+              aria-controls={mentionQuery ? "bot-mention-options" : undefined}
+              aria-activedescendant={
+                mentionQuery && mentionBots[mentionIndex]
+                  ? `bot-mention-${mentionBots[mentionIndex].id}`
+                  : undefined
+              }
+              onKeyDownCapture={(event) => {
+                if (!mentionQuery || pending || event.nativeEvent.isComposing)
+                  return
+                if (event.key === "Escape") {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  setMentionQuery(undefined)
+                } else if (
+                  ["ArrowDown", "ArrowUp"].includes(event.key) &&
+                  mentionBots.length
+                ) {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  setMentionIndex(
+                    (index) =>
+                      (index +
+                        (event.key === "ArrowDown" ? 1 : -1) +
+                        mentionBots.length) %
+                      mentionBots.length
+                  )
+                } else if (
+                  ["Enter", "Tab"].includes(event.key) &&
+                  !event.shiftKey &&
+                  mentionBots[mentionIndex]
+                ) {
+                  event.preventDefault()
+                  event.stopPropagation()
+                  chooseMention(mentionBots[mentionIndex])
+                }
+              }}
+              placeholder={
+                groupBots
+                  ? "Message a bot, or type @ to mention one…"
+                  : "What would you like to know?"
+              }
               value={input}
-              onChange={(event) => setInput(event.currentTarget.value)}
+              onChange={(event) => {
+                setInput(event.currentTarget.value)
+                if (groupBots) {
+                  setMentionQuery(
+                    getMentionQuery(
+                      event.currentTarget.value,
+                      event.currentTarget.selectionStart
+                    )
+                  )
+                  setMentionIndex(0)
+                }
+              }}
+              onSelect={(event) => {
+                if (groupBots) {
+                  setMentionQuery(
+                    getMentionQuery(
+                      event.currentTarget.value,
+                      event.currentTarget.selectionStart
+                    )
+                  )
+                  setMentionIndex(0)
+                }
+              }}
+              onBlur={() => setMentionQuery(undefined)}
             />
           </PromptInputBody>
           <PromptInputFooter>
@@ -529,13 +739,21 @@ function ChatView({
                 <PromptInputSelect
                   value={botId}
                   onValueChange={(value) => {
-                    if (typeof value === "string") setSelectedBotId(value)
+                    if (typeof value === "string") {
+                      setSelectedBotId(value)
+                      const next = groupBots.find((bot) => bot.id === value)
+                      const current = resolveBotMention(input, groupBots, botId)
+                      if (next && current.mention)
+                        setInput(
+                          `${input.slice(0, current.mention.start)}@${next.name}${input.slice(current.mention.start + current.mention.length)}`
+                        )
+                    }
                   }}
                   disabled={pending}
                 >
                   <PromptInputSelectTrigger
                     aria-label="Choose which bot to talk to"
-                    className="max-w-40"
+                    className="max-w-64"
                   >
                     {selectedBot ? (
                       <ChatAvatar
@@ -544,13 +762,15 @@ function ChatView({
                       />
                     ) : null}
                     <PromptInputSelectValue>
-                      {selectedBot?.name ?? "Choose a bot"}
+                      {selectedBot
+                        ? `${selectedBot.name} (${selectedBot.job})`
+                        : "Choose a bot"}
                     </PromptInputSelectValue>
                   </PromptInputSelectTrigger>
                   <PromptInputSelectContent>
                     {groupBots.map((bot) => (
                       <PromptInputSelectItem key={bot.id} value={bot.id}>
-                        {bot.name}
+                        {bot.name} ({bot.job})
                       </PromptInputSelectItem>
                     ))}
                   </PromptInputSelectContent>
