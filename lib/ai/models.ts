@@ -7,6 +7,9 @@ const openrouter = createOpenAICompatible({
   name: "openrouter",
   baseURL: "https://openrouter.ai/api/v1",
   apiKey: process.env.OPENROUTER_API_KEY,
+  includeUsage: true,
+  supportsStructuredOutputs: true,
+  supportsMultiPartToolContent: true,
 })
 
 const ollama = createOpenAICompatible({
@@ -30,13 +33,6 @@ export const models = {
     apiKeyEnv: "GOOGLE_GENERATIVE_AI_API_KEY",
     model: google("gemini-3-flash-preview"),
   },
-  "openrouter-gpt-oss-120b": {
-    label: "GPT-OSS 120B",
-    provider: "OpenRouter",
-    supportsImages: false,
-    apiKeyEnv: "OPENROUTER_API_KEY",
-    model: openrouter("openai/gpt-oss-120b"),
-  },
   "groq-gpt-oss-120b": {
     label: "GPT-OSS 120B",
     provider: "Groq",
@@ -58,33 +54,27 @@ export const models = {
     apiKeyEnv: "GROQ_API_KEY",
     model: groq("qwen/qwen3.8-27b"),
   },
-  "openrouter-nemotron-3-ultra": {
-    label: "Nemotron 3 Ultra 550B A55B (free)",
-    provider: "OpenRouter",
-    supportsImages: false,
-    apiKeyEnv: "OPENROUTER_API_KEY",
-    model: openrouter("nvidia/nemotron-3-ultra-550b-a55b:free"),
-  },
-  "openrouter-laguna-s-2.1": {
-    label: "Laguna S 2.1 (free)",
-    provider: "OpenRouter",
-    supportsImages: false,
-    apiKeyEnv: "OPENROUTER_API_KEY",
-    model: openrouter("poolside/laguna-s-2.1:free"),
-  },
-  "openrouter-nemotron-3.5-lightning": {
-    label: "Nemotron 3.5 Lightning (free)",
-    provider: "OpenRouter",
-    supportsImages: false,
-    apiKeyEnv: "OPENROUTER_API_KEY",
-    model: openrouter("nvidia/nemotron-3.5-lightning:free"),
-  },
-  "openrouter-gemma-4-31b": {
-    label: "Gemma 4 31B (free)",
+  // Verified with the configured key: memory schema, streaming, and tool calls.
+  "openrouter-dots-3-note": {
+    label: "Dots3-Note Preview (free)",
     provider: "OpenRouter",
     supportsImages: true,
     apiKeyEnv: "OPENROUTER_API_KEY",
-    model: openrouter("google/gemma-4-31b-it:free"),
+    model: openrouter("dots-studio/dots-3-note-preview:free"),
+  },
+  "openrouter-lfm-2.5-2.6b": {
+    label: "LFM2.5-2.6B (free)",
+    provider: "OpenRouter",
+    supportsImages: false,
+    apiKeyEnv: "OPENROUTER_API_KEY",
+    model: openrouter("liquid/lfm-2.5-2.6b:free"),
+  },
+  "openrouter-nemotron-3-super": {
+    label: "Nemotron 3 Super 120B A12B (free)",
+    provider: "OpenRouter",
+    supportsImages: false,
+    apiKeyEnv: "OPENROUTER_API_KEY",
+    model: openrouter("nvidia/nemotron-3-super-120b-a12b:free"),
   },
   "ollama-local": {
     label: ollamaModelId,
