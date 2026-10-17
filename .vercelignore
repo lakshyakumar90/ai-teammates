@@ -1,0 +1,11 @@
+.trigger
+.agents
+.claude
+.cursor
+.firecrawl
+.pnpm-store
+.clerk
+.neon
+.env*
+tests
+*.tsbuildinfo
