@@ -9,6 +9,20 @@ and 10% of production requests.
 Session Replay captures all development sessions, 10% of production sessions,
 and sessions with errors. Text and form inputs are masked, and media is blocked.
 
+Sentry Logs are enabled by default in the installed SDK. Server actions and
+Daytona provisioning use `lib/logging.ts` to record operation completion,
+rejection, failure, and duration. Worker logs cover task attempts, completion,
+final failures, chat turns, model timeouts, and sandbox lease/tool events.
+Billing checks record denied access and lookup failures; usage accounting records
+quota denials, settlements, and refunds. Browser logs include
+monitoring startup and React render failures; request failures include route
+patterns and HTTP methods. Worker logs flush on success, final failure, and
+durable waits. Search Logs by `operation`, `chatId`, `trigger.run.id`, or
+`trigger.task.id`. Application log attributes contain status, IDs, counts, and
+error types rather than prompts, memory values, command text, file contents,
+access tokens, task payloads, or raw error messages. Console output is not
+automatically forwarded to Sentry Logs.
+
 The Trigger.dev worker initializes Sentry separately in `trigger/init.ts`.
 Its global failure hook reports failures after retries are exhausted, with task
 and run IDs, and flushes events before shutdown. Task payloads are not attached.

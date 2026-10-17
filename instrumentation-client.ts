@@ -16,4 +16,8 @@ Sentry.init({
   replaysOnErrorSampleRate: 1,
 })
 
+Sentry.logger.debug("Browser monitoring initialized", {
+  "runtime.kind": "browser",
+})
+
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart

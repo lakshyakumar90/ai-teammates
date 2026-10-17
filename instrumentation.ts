@@ -9,4 +9,16 @@ export async function register() {
   }
 }
 
-export const onRequestError = Sentry.captureRequestError
+export const onRequestError: typeof Sentry.captureRequestError = async (
+  error,
+  request,
+  context
+) => {
+  Sentry.logger.error("Server request failed", {
+    "http.request.method": request.method,
+    route: context.routePath,
+    routeType: context.routeType,
+    "error.type": error instanceof Error ? error.name : "UnknownError",
+  })
+  await Sentry.captureRequestError(error, request, context)
+}

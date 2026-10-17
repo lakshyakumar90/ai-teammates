@@ -1,4 +1,5 @@
 "use server"
+import { logOperation } from "@/lib/logging"
 
 import { auth } from "@clerk/nextjs/server"
 import { and, eq } from "drizzle-orm"
@@ -27,12 +28,14 @@ const createBotSchema = insertBotSchema.omit({
 export type CreateBotInput = Omit<z.infer<typeof createBotSchema>, "userId">
 
 export async function createBot(input: CreateBotInput) {
-  try {
-    return await createBotWithUsage(input)
-  } catch (error) {
-    if (error instanceof UsageLimitError) return { error: error.message }
-    throw error
-  }
+  return logOperation("actions.bot.createBot", async () => {
+    try {
+      return await createBotWithUsage(input)
+    } catch (error) {
+      if (error instanceof UsageLimitError) return { error: error.message }
+      throw error
+    }
+  })
 }
 
 async function createBotWithUsage(input: CreateBotInput) {
@@ -105,82 +108,86 @@ const updateBotSchema = insertBotSchema
 export type UpdateBotInput = z.infer<typeof updateBotSchema>
 
 export async function updateBot(input: UpdateBotInput) {
-  const denied = await getPaidAccessError()
-  if (denied) return denied
-  const { userId } = await auth()
-  if (!userId) {
-    throw new Error("Not authenticated")
-  }
+  return logOperation("actions.bot.updateBot", async () => {
+    const denied = await getPaidAccessError()
+    if (denied) return denied
+    const { userId } = await auth()
+    if (!userId) {
+      throw new Error("Not authenticated")
+    }
 
-  const data = updateBotSchema.parse(input)
-  const [bot] = await db
-    .update(bots)
-    .set({
-      name: data.name,
-      job: data.job,
-      instructions: data.instructions,
-      avatar: data.avatar,
-    })
-    .where(and(eq(bots.id, data.id), eq(bots.userId, userId)))
-    .returning()
-  if (!bot) {
-    throw new Error("Bot not found")
-  }
-  return bot
+    const data = updateBotSchema.parse(input)
+    const [bot] = await db
+      .update(bots)
+      .set({
+        name: data.name,
+        job: data.job,
+        instructions: data.instructions,
+        avatar: data.avatar,
+      })
+      .where(and(eq(bots.id, data.id), eq(bots.userId, userId)))
+      .returning()
+    if (!bot) {
+      throw new Error("Bot not found")
+    }
+    return bot
+  })
 }
 
 const deleteBotSchema = z.object({ id: z.string().min(1) })
 
 export async function deleteBot(input: z.infer<typeof deleteBotSchema>) {
-  const denied = await getPaidAccessError()
-  if (denied) return denied
-  const { userId } = await auth()
-  if (!userId) {
-    throw new Error("Not authenticated")
-  }
+  return logOperation("actions.bot.deleteBot", async () => {
+    const denied = await getPaidAccessError()
+    if (denied) return denied
+    const { userId } = await auth()
+    if (!userId) {
+      throw new Error("Not authenticated")
+    }
 
-  const data = deleteBotSchema.parse(input)
+    const data = deleteBotSchema.parse(input)
 
-  const [existingBot] = await db
-    .select()
-    .from(bots)
-    .where(and(eq(bots.id, data.id), eq(bots.userId, userId)))
-    .limit(1)
-  if (!existingBot) {
-    throw new Error("Bot not found")
-  }
+    const [existingBot] = await db
+      .select()
+      .from(bots)
+      .where(and(eq(bots.id, data.id), eq(bots.userId, userId)))
+      .limit(1)
+    if (!existingBot) {
+      throw new Error("Bot not found")
+    }
 
-  // Keep the relationship available for retry if Daytona deletion fails.
-  if (existingBot.sandboxId) {
-    await deleteBotSandbox(existingBot.sandboxId)
-  }
+    // Keep the relationship available for retry if Daytona deletion fails.
+    if (existingBot.sandboxId) {
+      await deleteBotSandbox(existingBot.sandboxId)
+    }
 
-  const memberships = await db
-    .select({ chatId: chatMembers.chatId })
-    .from(chatMembers)
-    .where(eq(chatMembers.botId, data.id))
-
-  const [bot] = await db
-    .delete(bots)
-    .where(and(eq(bots.id, data.id), eq(bots.userId, userId)))
-    .returning()
-  if (!bot) {
-    throw new Error("Bot not found")
-  }
-
-  // Drop chats left with no members so deleted bots vanish from the sidebar.
-  await releaseBotCapacity(userId)
-  for (const { chatId } of memberships) {
-    const remaining = await db
+    const memberships = await db
       .select({ chatId: chatMembers.chatId })
       .from(chatMembers)
-      .where(eq(chatMembers.chatId, chatId))
-      .limit(1)
-    if (remaining.length === 0) {
-      await db
-        .delete(chats)
-        .where(and(eq(chats.id, chatId), eq(chats.userId, userId)))
+      .where(eq(chatMembers.botId, data.id))
+
+    const [bot] = await db
+      .delete(bots)
+      .where(and(eq(bots.id, data.id), eq(bots.userId, userId)))
+      .returning()
+    if (!bot) {
+      throw new Error("Bot not found")
     }
-  }
-  return bot
+
+    // Drop chats left with no members so deleted bots vanish from the sidebar.
+    await releaseBotCapacity(userId)
+    for (const { chatId } of memberships) {
+      const remaining = await db
+        .select({ chatId: chatMembers.chatId })
+        .from(chatMembers)
+        .where(eq(chatMembers.chatId, chatId))
+        .limit(1)
+      if (remaining.length === 0) {
+        await db
+          .delete(chats)
+          .where(and(eq(chats.id, chatId), eq(chats.userId, userId)))
+      }
+    }
+    return bot
+  })
 }

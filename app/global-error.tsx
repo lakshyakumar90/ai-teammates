@@ -10,6 +10,10 @@ export default function GlobalError({
   error: Error & { digest?: string }
 }) {
   useEffect(() => {
+    Sentry.logger.error("React render failed", {
+      "error.type": error.name,
+      digest: error.digest,
+    })
     Sentry.captureException(error)
   }, [error])
 

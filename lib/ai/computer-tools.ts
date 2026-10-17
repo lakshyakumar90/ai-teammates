@@ -5,6 +5,7 @@ import { z } from "zod"
 import { getChatBot } from "./bot-context"
 import { managedSandbox } from "../sandbox-usage"
 import { requireUserPaidPlan } from "../billing-agent"
+import { logger, errorType } from "../logging"
 import {
   ChatRequestError,
   chatErrorMessage,
@@ -42,6 +43,7 @@ export function createComputerTools(
   ): Promise<T> {
     const result = queue.then(async () => {
       signal?.throwIfAborted()
+      const startedAt = Date.now()
       try {
         const sandbox = await resolveSandbox()
         signal?.throwIfAborted()
@@ -51,9 +53,18 @@ export function createComputerTools(
         }
         const output = await operation(sandbox)
         signal?.throwIfAborted()
+        logger.debug("Sandbox tool completed", {
+          desktop,
+          duration_ms: Date.now() - startedAt,
+        })
         return output
       } catch (error) {
         if (signal?.aborted) throw signal.reason
+        logger.error("Sandbox tool failed", {
+          desktop,
+          duration_ms: Date.now() - startedAt,
+          "error.type": errorType(error),
+        })
         if (error instanceof DaytonaError) {
           throw new ChatRequestError(
             `Daytona${error.statusCode ? ` (HTTP ${error.statusCode})` : ""}: ${sanitizeDetail(error.message)}`

@@ -1,4 +1,5 @@
 "use server"
+import { logOperation } from "@/lib/logging"
 
 import { auth } from "@clerk/nextjs/server"
 import { DaytonaError } from "@daytona/sdk"
@@ -14,30 +15,32 @@ import { UsageLimitError } from "@/lib/usage-policy"
 export async function loadChatDesktop(
   chatId: string
 ): Promise<{ url: string } | { error: string } | BillingFailure> {
-  const { userId } = await auth()
-  if (!userId) return { error: "Not authenticated." }
-  if (!z.string().min(1).safeParse(chatId).success) {
-    return { error: "Invalid chat ID." }
-  }
-
-  try {
-    const denied = await getPaidAccessError()
-    if (denied) return denied
-    const chat = await getChat(chatId)
-    if (!chat) return { error: "Chat not found." }
-    if (chat.kind === "group")
-      return { error: "Group chats do not have a desktop." }
-    const sandboxId = chat.members[0]?.bot.sandboxId
-    if (!sandboxId) return { error: "This bot has no Daytona sandbox." }
-    return { url: await getSandboxVncUrl(sandboxId, userId) }
-  } catch (error) {
-    return {
-      error:
-        error instanceof UsageLimitError
-          ? error.message
-          : error instanceof DaytonaError
-            ? `Daytona${error.statusCode ? ` (HTTP ${error.statusCode})` : ""}: ${sanitizeDetail(error.message)}`
-            : "Could not connect to the desktop. Please retry.",
+  return logOperation("actions.desktop.loadChatDesktop", async () => {
+    const { userId } = await auth()
+    if (!userId) return { error: "Not authenticated." }
+    if (!z.string().min(1).safeParse(chatId).success) {
+      return { error: "Invalid chat ID." }
     }
-  }
+
+    try {
+      const denied = await getPaidAccessError()
+      if (denied) return denied
+      const chat = await getChat(chatId)
+      if (!chat) return { error: "Chat not found." }
+      if (chat.kind === "group")
+        return { error: "Group chats do not have a desktop." }
+      const sandboxId = chat.members[0]?.bot.sandboxId
+      if (!sandboxId) return { error: "This bot has no Daytona sandbox." }
+      return { url: await getSandboxVncUrl(sandboxId, userId) }
+    } catch (error) {
+      return {
+        error:
+          error instanceof UsageLimitError
+            ? error.message
+            : error instanceof DaytonaError
+              ? `Daytona${error.statusCode ? ` (HTTP ${error.statusCode})` : ""}: ${sanitizeDetail(error.message)}`
+              : "Could not connect to the desktop. Please retry.",
+      }
+    }
+  })
 }

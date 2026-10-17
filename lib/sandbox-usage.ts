@@ -14,6 +14,7 @@ import {
 } from "./usage"
 import { UsageLimitError, usageLimits } from "./usage-policy"
 import type { stopSandboxLease } from "../trigger/sandbox-usage"
+import { logger, errorType } from "./logging"
 
 export async function stopLease(userId: string, leaseId: string) {
   // Claim the stop before contacting Daytona. Concurrent UI/timer/recovery
@@ -21,7 +22,9 @@ export async function stopLease(userId: string, leaseId: string) {
   // claimant becomes retryable after three minutes.
   const [lease] = await db
     .update(sandboxLeases)
-    .set({ stoppingUntil: sql`date_trunc('milliseconds', now()) + interval '3 minutes'` })
+    .set({
+      stoppingUntil: sql`date_trunc('milliseconds', now()) + interval '3 minutes'`,
+    })
     .where(
       and(
         eq(sandboxLeases.userId, userId),
@@ -31,6 +34,7 @@ export async function stopLease(userId: string, leaseId: string) {
     )
     .returning()
   if (!lease) return
+  logger.info("Sandbox lease stopping", { leaseId, sandboxId: lease.sandboxId })
   // Never close a replacement lease. A failed stop retains the lock and retries.
   try {
     try {
@@ -59,7 +63,15 @@ export async function stopLease(userId: string, leaseId: string) {
       .where(
         and(eq(sandboxLeases.userId, userId), eq(sandboxLeases.id, leaseId))
       )
+    logger.info("Sandbox lease stopped", {
+      leaseId,
+      sandboxId: lease.sandboxId,
+    })
   } catch (error) {
+    logger.error("Sandbox lease stop failed", {
+      leaseId,
+      "error.type": errorType(error),
+    })
     await db
       .update(sandboxLeases)
       .set({ stoppingUntil: null })
@@ -140,6 +152,7 @@ export async function withSandboxLease(
       { delay: lease.endsAt }
     )
     armed = true
+    logger.info("Sandbox lease allocated", { leaseId: lease.id, seconds })
     const sandbox = await start()
     // No GPUs or unexpectedly large default snapshots are allowed.
     if (
@@ -168,8 +181,16 @@ export async function withSandboxLease(
         "This sandbox session was stopped during startup. Please retry."
       )
     }
+    logger.info("Sandbox lease ready", {
+      leaseId: lease.id,
+      sandboxId: sandbox.id,
+    })
     return sandbox
   } catch (error) {
+    logger.warn("Sandbox lease startup failed", {
+      leaseId: lease.id,
+      "error.type": errorType(error),
+    })
     if (armed) await stopLease(userId, lease.id)
     else await db.delete(sandboxLeases).where(eq(sandboxLeases.id, lease.id))
     // Once a start was attempted, keep the allocated runtime debit; it might

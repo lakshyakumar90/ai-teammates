@@ -1,3 +1,5 @@
+import { logger } from "../logging"
+
 export function responseTimeoutPolicy({
   signal,
   provider,
@@ -16,10 +18,12 @@ export function responseTimeoutPolicy({
     },
     onAbort: () => {
       // Internal model timeouts must be visible errors; pressing Stop stays quiet.
-      if (!signal.aborted)
+      if (!signal.aborted) {
+        logger.warn("Model response timed out", { provider })
         onTimeout(
           `${provider} did not respond in time. Retry or select another model.`
         )
+      }
     },
   }
 }

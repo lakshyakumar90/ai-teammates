@@ -22,9 +22,21 @@ import { ensureUsagePeriod } from "../lib/usage"
 import { responseTimeoutPolicy } from "../lib/ai/response-timeout"
 import { ChatRequestError, chatErrorMessage } from "../lib/ai/chat-error"
 import { requireUserPaidPlan } from "../lib/billing-agent"
+import { logger, errorType } from "../lib/logging"
 
 export const chatAgent = chat.agent({
   id: "chat-agent",
+  onTurnStart: async ({ chatId, runId, turn }) => {
+    logger.info("Chat turn started", { chatId, "trigger.run.id": runId, turn })
+  },
+  onTurnComplete: async ({ chatId, runId, turn, stopped }) => {
+    logger.info("Chat turn finished", {
+      chatId,
+      "trigger.run.id": runId,
+      turn,
+      stopped,
+    })
+  },
   storage: defaultStorage,
   clientDataSchema: z.object({
     modelId: z.string(),
@@ -66,14 +78,21 @@ export const chatAgent = chat.agent({
           ...createRoutedMemoryTools(() => getChatMemory(chatId)),
         },
       })
-    } catch {
+    } catch (error) {
+      logger.warn("Chat message validation failed", {
+        chatId,
+        "error.type": errorType(error),
+      })
       throw new ChatRequestError(
         "The message could not be validated. Refresh the chat and retry."
       )
     }
   },
   uiMessageStreamOptions: {
-    onError: chatErrorMessage,
+    onError: (error) => {
+      logger.error("Chat stream failed", { "error.type": errorType(error) })
+      return chatErrorMessage(error)
+    },
   },
   run: async ({ chatId, messages, tools, clientData, signal, streamText }) => {
     if (!clientData) throw new ChatRequestError("Missing model selection")
@@ -82,9 +101,16 @@ export const chatAgent = chat.agent({
       throw new ChatRequestError(
         "This model is no longer available. Select another model."
       )
-    chat.setUIMessageStreamOptions({
-      onError: (error) => chatErrorMessage(error, option.provider),
-    })
+    const onStreamError = (error: unknown) => {
+      logger.error("Chat stream failed", {
+        chatId,
+        modelId: clientData.modelId,
+        provider: option.provider,
+        "error.type": errorType(error),
+      })
+      return chatErrorMessage(error, option.provider)
+    }
+    chat.setUIMessageStreamOptions({ onError: onStreamError })
     if (
       !option.supportsImages &&
       messages.some(
@@ -121,6 +147,12 @@ export const chatAgent = chat.agent({
           })
         : []
       await memory.remember(facts)
+      logger.debug("Chat memory preparation completed", {
+        chatId,
+        modelId: clientData.modelId,
+        group,
+        factCount: facts.length,
+      })
       const common = {
         model,
         messages,
@@ -148,7 +180,7 @@ export const chatAgent = chat.agent({
 
       const members = await getGroupBots(chatId)
       chat.setUIMessageStreamOptions({
-        onError: (error) => chatErrorMessage(error, option.provider),
+        onError: onStreamError,
         messageMetadata: ({ part }) =>
           part.type === "start"
             ? { bot: { id: bot.id, name: bot.name, avatar: bot.avatar } }
@@ -179,6 +211,10 @@ export const chatAgent = chat.agent({
         }),
       })
     } catch (error) {
+      logger.warn("Chat turn preparation failed", {
+        chatId,
+        "error.type": errorType(error),
+      })
       throw new ChatRequestError(chatErrorMessage(error))
     }
   },

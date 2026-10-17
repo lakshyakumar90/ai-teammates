@@ -5,6 +5,7 @@ import { db } from "./db/client"
 import { usageEntries, usagePeriods } from "./db/schema"
 import { requireUserPaidPlan } from "./billing-agent"
 import { UsageLimitError, usageLimits } from "./usage-policy"
+import { logger } from "./logging"
 
 export async function usageNow() {
   const result = await db.execute(
@@ -80,10 +81,13 @@ export async function reserveUsage(
     INSERT INTO usage_entries (id, period_id, kind, model_id, amount, settled)
     SELECT ${id}, id, ${kind}, ${modelId ?? null}, ${amount}, ${kind === "bot"} FROM debit
     RETURNING id`)
-  if (!result.rows.length)
+  if (!result.rows.length) {
+    logger.warn("Usage reservation denied", { kind, modelId, amount })
     throw new UsageLimitError(
       `${kind === "ai" ? "AI" : kind === "sandbox" ? "Sandbox runtime" : "Bot creation"} allowance reached, or insufficient allowance for this request.`
     )
+  }
+  logger.debug("Usage reserved", { entryId: id, kind, modelId, amount })
   return id
 }
 
@@ -95,10 +99,12 @@ export async function reserveBotCapacity(userId: string) {
     ON CONFLICT (user_id) DO NOTHING`)
   const result = await db.execute(sql`UPDATE bot_capacity SET count = count + 1
     WHERE user_id = ${userId} AND count < ${usageLimits.maxBots} RETURNING count`)
-  if (!result.rows.length)
+  if (!result.rows.length) {
+    logger.warn("Bot capacity reached")
     throw new UsageLimitError(
       "Your plan allows up to 3 bots. Delete a bot before creating another."
     )
+  }
 }
 
 export async function releaseBotCapacity(userId: string) {
@@ -129,6 +135,12 @@ export async function settleAI(
     SELECT period_id, amount FROM usage_entries WHERE id = ${id} AND settled = false
   ) UPDATE usage_periods p SET ai_micros = p.ai_micros + ${amount} - original.amount
     FROM original, settled WHERE p.id = original.period_id`)
+  logger.info("AI usage settlement processed", {
+    entryId: id,
+    amount,
+    inputTokens,
+    outputTokens,
+  })
 }
 
 export async function refundUsage(id: string) {
@@ -138,6 +150,7 @@ export async function refundUsage(id: string) {
     bot_creations = p.bot_creations - CASE WHEN r.kind = 'bot' THEN r.amount ELSE 0 END,
     sandbox_seconds = p.sandbox_seconds - CASE WHEN r.kind = 'sandbox' THEN r.amount ELSE 0 END
     FROM removed r WHERE p.id = r.period_id`)
+  logger.info("Usage refund processed", { entryId: id })
 }
 
 export async function settleSandbox(id: string, elapsedSeconds: number) {
@@ -148,6 +161,10 @@ export async function settleSandbox(id: string, elapsedSeconds: number) {
     WHERE id = ${id} AND settled = false RETURNING period_id, amount
   ) UPDATE usage_periods p SET sandbox_seconds = p.sandbox_seconds - original.amount + changed.amount
     FROM original, changed WHERE p.id = original.period_id`)
+  logger.info("Sandbox usage settlement processed", {
+    entryId: id,
+    elapsedSeconds,
+  })
 }
 
 export async function usageSnapshot(userId: string) {

@@ -1,4 +1,5 @@
 "use server"
+import { logOperation } from "@/lib/logging"
 
 import { auth } from "@clerk/nextjs/server"
 import { eq } from "drizzle-orm"
@@ -8,22 +9,26 @@ import { defaultMemoryPreferences } from "@/lib/ai/memory-manager"
 import { getPaidAccessError } from "@/lib/billing"
 
 export async function getMemoryPreferences() {
-  const { userId } = await auth()
-  if (!userId) throw new Error("Unauthorized")
-  const saved = await db.query.memoryPreferences.findFirst({
-    where: eq(memoryPreferences.userId, userId),
+  return logOperation("actions.memory.getMemoryPreferences", async () => {
+    const { userId } = await auth()
+    if (!userId) throw new Error("Unauthorized")
+    const saved = await db.query.memoryPreferences.findFirst({
+      where: eq(memoryPreferences.userId, userId),
+    })
+    return memoryPreferencesFormSchema.parse(saved ?? defaultMemoryPreferences)
   })
-  return memoryPreferencesFormSchema.parse(saved ?? defaultMemoryPreferences)
 }
 
 export async function updateMemoryPreferences(input: unknown) {
-  const denied = await getPaidAccessError()
-  if (denied) return denied
-  const { userId } = await auth()
-  if (!userId) throw new Error("Unauthorized")
-  const values = memoryPreferencesFormSchema.parse(input)
-  await db
-    .insert(memoryPreferences)
-    .values({ userId, ...values })
-    .onConflictDoUpdate({ target: memoryPreferences.userId, set: values })
+  return logOperation("actions.memory.updateMemoryPreferences", async () => {
+    const denied = await getPaidAccessError()
+    if (denied) return denied
+    const { userId } = await auth()
+    if (!userId) throw new Error("Unauthorized")
+    const values = memoryPreferencesFormSchema.parse(input)
+    await db
+      .insert(memoryPreferences)
+      .values({ userId, ...values })
+      .onConflictDoUpdate({ target: memoryPreferences.userId, set: values })
+  })
 }
