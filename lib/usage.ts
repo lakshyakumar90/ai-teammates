@@ -75,7 +75,7 @@ export async function reserveUsage(
         ai_calls = ai_calls + ${kind === "ai" ? 1 : 0}
       WHERE id = ${periodId} AND ends_at > now()
         AND ${column} + ${amount} <= ${limit}
-        AND (${kind !== "ai"} OR ai_calls < ${usageLimits.aiCalls})
+        AND (${kind !== "ai"} OR ai_micros < ${usageLimits.aiMicros})
       RETURNING id
     )
     INSERT INTO usage_entries (id, period_id, kind, model_id, amount, settled)

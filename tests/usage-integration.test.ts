@@ -23,16 +23,14 @@ test("database ledger enforces concurrent limits, settles once, and isolates per
   const id = `${userId}:current`
   const next = `${userId}:next`
   try {
-    await db
-      .insert(usagePeriods)
-      .values(
-        [id, next].map((id) => ({
-          id,
-          userId,
-          startsAt: new Date(Date.now() - 1000),
-          endsAt: new Date(Date.now() + 3600000),
-        }))
-      )
+    await db.insert(usagePeriods).values(
+      [id, next].map((id) => ({
+        id,
+        userId,
+        startsAt: new Date(Date.now() - 1000),
+        endsAt: new Date(Date.now() + 3600000),
+      }))
+    )
     const reservations = await Promise.allSettled(
       Array.from({ length: 12 }, () =>
         reserveUsage(id, "ai", 1000000, "test-model")
@@ -61,6 +59,14 @@ test("database ledger enforces concurrent limits, settles once, and isolates per
     assert.equal(entry?.settled, true)
     await reserveUsage(next, "ai", 5000000)
     await assert.rejects(reserveUsage(next, "ai", 1), /allowance/)
+    await assert.rejects(reserveUsage(next, "ai", 0), /allowance/)
+    await db
+      .update(usagePeriods)
+      .set({ aiCalls: 2000 })
+      .where(eq(usagePeriods.id, id))
+    const actualUsageEntry = await reserveUsage(id, "ai", 0, "test-model")
+    await settleAI(actualUsageEntry, 999000, 1000, 2000)
+    await assert.rejects(reserveUsage(id, "ai", 0), /allowance/)
     const runtime = await reserveUsage(id, "sandbox", 72000)
     await assert.rejects(reserveUsage(id, "sandbox", 1), /allowance/)
     await Promise.all([settleSandbox(runtime, 45), settleSandbox(runtime, 45)])

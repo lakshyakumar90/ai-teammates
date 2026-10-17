@@ -1,7 +1,7 @@
 import { wrapLanguageModel, type LanguageModelMiddleware } from "ai"
 import { getModel } from "./models"
 import { currentUsagePeriod, reserveUsage, settleAI } from "../usage"
-import { tokenCost, UsageLimitError, usageLimits } from "../usage-policy"
+import { tokenCost, UsageLimitError } from "../usage-policy"
 
 // Published standard rates, USD / million tokens. No cache discounts are
 // assumed. Unknown models fail closed rather than silently becoming free.
@@ -52,12 +52,7 @@ export async function meteredModel(
       throw new UsageLimitError(
         "Your subscription period changed. Send the message again."
       )
-    return reserveUsage(
-      periodId,
-      "ai",
-      tokenCost(usageLimits.maxInputTokens, usageLimits.maxOutputTokens, rate),
-      modelId
-    )
+    return reserveUsage(periodId, "ai", 0, modelId)
   }
   return wrapLanguageModel({
     model: getModel(modelId),
@@ -76,53 +71,9 @@ export function createUsageMiddleware({
 }): LanguageModelMiddleware {
   return {
     specificationVersion: "v4",
-    transformParams: async ({ params }) => {
-      // Bound text/tool payloads before sending them. Binary inputs are given a
-      // separate conservative ceiling; audio/video and arbitrary files are not
-      // supported by the metered chat path.
-      let imageBudget = 0
-      let bytes =
-        Buffer.byteLength(
-          JSON.stringify(params.prompt, function (key, value) {
-            // Files can be binary arrays or base64 strings. Count images by a
-            // token ceiling instead of counting their encoded transport bytes.
-            if (
-              key === "data" &&
-              typeof this.mediaType === "string" &&
-              this.mediaType.startsWith("image/")
-            ) {
-              imageBudget += 32768
-              return "[image]"
-            }
-            return value
-          })
-        ) + Buffer.byteLength(JSON.stringify(params.tools ?? []))
-      for (const message of params.prompt) {
-        if (typeof message.content === "string") continue
-        for (const part of message.content) {
-          if (part.type === "file") {
-            if (!part.mediaType.startsWith("image/"))
-              throw new UsageLimitError("Only image attachments are supported.")
-          }
-        }
-      }
-      bytes += imageBudget
-      if (bytes > 100000)
-        throw new UsageLimitError(
-          "This conversation is too large. Start a shorter chat or remove attachments."
-        )
-      return {
-        ...params,
-        maxOutputTokens: Math.min(
-          params.maxOutputTokens ?? usageLimits.maxOutputTokens,
-          usageLimits.maxOutputTokens
-        ),
-      }
-    },
     wrapGenerate: async ({ doGenerate }) => {
       const id = await reserve()
-      // On an ambiguous failure keep the reservation: the provider may already
-      // have billed it. This prevents abort/retry abuse and fails closed.
+      // Record confirmed provider usage; pending calls do not consume an estimated ceiling.
       const result = await doGenerate()
       const input = result.usage.inputTokens.total
       const output = result.usage.outputTokens.total

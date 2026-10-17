@@ -167,13 +167,16 @@ export default async function UsagePage() {
             label={`${inventory[0].count} / 3`}
             description="Up to three bots at a time. Delete a bot to free a slot."
           />
-          <Meter
-            title="AI requests"
-            used={calls}
-            limit={usageLimits.aiCalls}
-            label={`${calls.toLocaleString()} / 1,000`}
-            description="Each model call counts, including free models and automatic memory extraction."
-          />
+          <section className="rounded-xl border p-5 sm:p-6">
+            <h2 className="font-medium">AI requests</h2>
+            <p className="mt-2 text-2xl font-semibold">
+              {calls.toLocaleString()}
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              No request-count limit. Requests stop when your AI spending
+              allowance is reached.
+            </p>
+          </section>
         </div>
         <section className="mt-6 rounded-xl border p-5 sm:p-6">
           <h2 className="font-medium">Running sandbox</h2>
@@ -204,10 +207,10 @@ export default async function UsagePage() {
         <p className="mt-5 text-sm leading-relaxed text-muted-foreground">
           {Number(totals[0]?.input ?? 0).toLocaleString()} input tokens ·{" "}
           {Number(totals[0]?.output ?? 0).toLocaleString()} output tokens this
-          period. Reservations count toward the allowance until the provider
-          confirms usage. Interrupted requests without confirmed usage retain
-          their reservation. Allowances reset with your subscription period;
-          unused allowance does not roll over. No automatic overage charges.
+          period. AI spend is recorded from confirmed provider token usage.
+          Requests already in progress can finish after the allowance is
+          reached. Allowances reset with your subscription period; unused
+          allowance does not roll over. No automatic overage charges.
         </p>
         {snapshot && (
           <section className="mt-10">

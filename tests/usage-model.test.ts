@@ -65,7 +65,7 @@ test("AI middleware reserves before provider calls and records generate and stre
     ["reservation", 110, 100, 20],
     ["reservation", 110, 100, 20],
   ])
-  assert.equal(base.doGenerateCalls[0].maxOutputTokens, 4096)
+  assert.equal(base.doGenerateCalls[0].maxOutputTokens, undefined)
 })
 
 test("exhausted allowance prevents provider calls; failed calls retain reservations", async () => {
@@ -106,54 +106,47 @@ test("exhausted allowance prevents provider calls; failed calls retain reservati
   assert.equal(settlements, 0)
 })
 
-test("oversized prompts are rejected before reservation or provider work", async () => {
-  let reserved = false
+test("large conversations, screenshots, and explicit output budgets reach the provider", async () => {
+  let reserved = 0
+  const base = new MockLanguageModelV4({
+    doGenerate: {
+      content: [{ type: "text", text: "ok" }],
+      finishReason,
+      usage,
+      warnings: [],
+    },
+  })
   const model = wrapLanguageModel({
-    model: new MockLanguageModelV4(),
+    model: base,
     middleware: createUsageMiddleware({
       reserve: async () => {
-        reserved = true
+        reserved++
         return "entry"
       },
       settle: async () => {},
       rate: { input: 1, output: 1 },
     }),
   })
-  await assert.rejects(
-    generateText({ model, prompt: "a".repeat(100001), maxRetries: 0 }),
-    /too large/
-  )
-  assert.equal(reserved, false)
-})
-
-test("binary images are bounded by image token ceilings, including tool-result images", async () => {
-  const middleware = createUsageMiddleware({
-    reserve: async () => "unused",
-    settle: async () => {},
-    rate: { input: 1, output: 1 },
+  const largePrompt = "a".repeat(150000)
+  await generateText({
+    model,
+    prompt: largePrompt,
+    maxOutputTokens: 16384,
+    maxRetries: 0,
   })
-  const model = new MockLanguageModelV4()
+  assert.equal(base.doGenerateCalls[0].maxOutputTokens, 16384)
+  assert.match(
+    JSON.stringify(base.doGenerateCalls[0].prompt),
+    new RegExp("a{150000}")
+  )
   const image = {
     type: "file" as const,
     mediaType: "image/png",
     data: { type: "data" as const, data: new Uint8Array(1000000) },
   }
-  const transformed = await middleware.transformParams!({
-    type: "generate",
-    model,
-    params: { prompt: [{ role: "user", content: [image] }] },
+  await model.doGenerate({
+    prompt: [{ role: "user", content: [image, image, image, image] }],
   })
-  assert.equal(transformed.maxOutputTokens, 4096)
-  await assert.rejects(
-    Promise.resolve(
-      middleware.transformParams!({
-        type: "generate",
-        model,
-        params: {
-          prompt: [{ role: "user", content: [image, image, image, image] }],
-        },
-      })
-    ),
-    /too large/
-  )
+  assert.equal(base.doGenerateCalls[1].prompt[0].content.length, 4)
+  assert.equal(reserved, 2)
 })
