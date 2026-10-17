@@ -65,6 +65,9 @@ importers:
       '@sentry/nextjs':
         specifier: ^11.8.0
         version: 11.8.0(@babel/core@7.29.7)(next@16.4.0(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@types/node@20.19.43)(babel-plugin-macros@3.1.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react@19.3.0)
+      '@sentry/node':
+        specifier: 11.8.0
+        version: 11.8.0(@babel/core@7.29.7)(rollup@4.64.7)
       '@shadcn/react':
         specifier: ^0.3.1
         version: 0.3.1(@types/react@19.3.0)(react@19.3.0)
@@ -165,6 +168,9 @@ importers:
       '@next/env':
         specifier: 16.4.0
         version: 16.4.0
+      '@sentry/esbuild-plugin':
+        specifier: ^11.8.0
+        version: 11.8.0(@babel/core@7.29.7)(rollup@4.64.7)
       '@tailwindcss/postcss':
         specifier: ^4
         version: 4.3.3
@@ -2463,6 +2469,10 @@ packages:
 
   '@sentry/core@11.8.0':
     resolution: {integrity: sha512-4MVTthk6C/1oQFjbVIfygHyNkx2YGbwNLml0kJji0vjJXy6ZNls9zdIp0FTBTi4e3189IcSc5OXD4qcJdmEeKA==}
+    engines: {node: '>=20.19.0 <22.0.0 || >=22.12.0 <23.0.0 || >=23.2.0'}
+
+  '@sentry/esbuild-plugin@11.8.0':
+    resolution: {integrity: sha512-e/qu/Dfjrs67lyGdx+35Hyb83cuhW2Aw06ve2D4I2ySkcIwfwOJEuGHhmRO2o+g/mUdxn9hvNP344wGyXyrWhA==}
     engines: {node: '>=20.19.0 <22.0.0 || >=22.12.0 <23.0.0 || >=23.2.0'}
 
   '@sentry/feedback@11.8.0':
@@ -8532,6 +8542,14 @@ snapshots:
   '@sentry/core@11.8.0':
     dependencies:
       '@sentry/conventions': 0.27.0
+
+  '@sentry/esbuild-plugin@11.8.0(@babel/core@7.29.7)(rollup@4.64.7)':
+    dependencies:
+      '@sentry/bundler-plugins': 11.8.0(@babel/core@7.29.7)(rollup@4.64.7)
+    transitivePeerDependencies:
+      - '@babel/core'
+      - rollup
+      - webpack
 
   '@sentry/feedback@11.8.0':
     dependencies:

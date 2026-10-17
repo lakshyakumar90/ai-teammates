@@ -4,8 +4,21 @@
 
 Next.js browser, server, and edge errors report to `devtinder-oe/ai-teammates`.
 The public DSN is in `lib/sentry.ts`. Tracing samples all development requests
-and 10% of production requests. The separate Trigger.dev worker is not instrumented
-by this Next.js setup.
+and 10% of production requests.
+
+Session Replay captures all development sessions, 10% of production sessions,
+and sessions with errors. Text and form inputs are masked, and media is blocked.
+
+The Trigger.dev worker initializes Sentry separately in `trigger/init.ts`.
+Its global failure hook reports failures after retries are exhausted, with task
+and run IDs, and flushes events before shutdown. Task payloads are not attached.
+Trigger.dev continues to own worker tracing; this integration adds error capture.
+`SENTRY_DSN` can override the shared project DSN for the worker.
+Set `SENTRY_RELEASE` to the same commit SHA at build time and in the worker
+environment. Set `SENTRY_AUTH_TOKEN` in the environment running the Trigger.dev
+deploy command to upload worker source maps using the Sentry esbuild plugin.
+Restart the local Trigger.dev worker after these changes; production workers
+need a new deployment.
 
 Before the production build, set `SENTRY_AUTH_TOKEN` in your hosting provider's
 secret store using a Sentry organization token with release/upload permissions.

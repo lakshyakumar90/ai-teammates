@@ -1,4 +1,6 @@
 import { defineConfig } from "@trigger.dev/sdk"
+import { esbuildPlugin } from "@trigger.dev/build/extensions"
+import { sentryEsbuildPlugin } from "@sentry/esbuild-plugin"
 
 export default defineConfig({
   project: "proj_sssnetbqmvjbwyyailic",
@@ -20,5 +22,18 @@ export default defineConfig({
   },
   dirs: ["trigger"],
   // Daytona dynamically loads its multipart upload/download dependencies.
-  build: { external: ["@daytona/sdk"] },
+  build: {
+    external: ["@daytona/sdk"],
+    extensions: [
+      esbuildPlugin(
+        sentryEsbuildPlugin({
+          org: "devtinder-oe",
+          project: "ai-teammates",
+          authToken: process.env.SENTRY_AUTH_TOKEN,
+          release: { name: process.env.SENTRY_RELEASE },
+        }),
+        { placement: "last", target: "deploy" }
+      ),
+    ],
+  },
 })
