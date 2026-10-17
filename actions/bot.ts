@@ -41,10 +41,7 @@ export async function createBot(input: CreateBotInput) {
 async function createBotWithUsage(input: CreateBotInput) {
   const denied = await getPaidAccessError()
   if (denied) return denied
-  const { userId } = await auth()
-  if (!userId) {
-    throw new Error("Not authenticated")
-  }
+  const { userId } = await auth.protect()
 
   const data = createBotSchema.parse({ ...input, userId })
 
@@ -111,10 +108,7 @@ export async function updateBot(input: UpdateBotInput) {
   return logOperation("actions.bot.updateBot", async () => {
     const denied = await getPaidAccessError()
     if (denied) return denied
-    const { userId } = await auth()
-    if (!userId) {
-      throw new Error("Not authenticated")
-    }
+    const { userId } = await auth.protect()
 
     const data = updateBotSchema.parse(input)
     const [bot] = await db
@@ -140,10 +134,7 @@ export async function deleteBot(input: z.infer<typeof deleteBotSchema>) {
   return logOperation("actions.bot.deleteBot", async () => {
     const denied = await getPaidAccessError()
     if (denied) return denied
-    const { userId } = await auth()
-    if (!userId) {
-      throw new Error("Not authenticated")
-    }
+    const { userId } = await auth.protect()
 
     const data = deleteBotSchema.parse(input)
 

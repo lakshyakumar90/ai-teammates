@@ -10,8 +10,7 @@ import { stopLease } from "@/lib/sandbox-usage"
 
 export async function stopMySandbox() {
   return logOperation("actions.usage.stopMySandbox", async () => {
-    const { userId } = await auth()
-    if (!userId) throw new Error("Not authenticated")
+    const { userId } = await auth.protect()
     const lease = await db.query.sandboxLeases.findFirst({
       where: eq(sandboxLeases.userId, userId),
     })

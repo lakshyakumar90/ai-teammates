@@ -9,7 +9,7 @@ import { ChatRequestError, chatErrorMessage } from "@/lib/ai/chat-error"
 import { getChat } from "@/queries/chats"
 import type { chatAgent } from "@/trigger/chat"
 import { getPaidAccessError } from "@/lib/billing"
-import type { BillingFailure } from "@/lib/billing-policy"
+import type { AccessFailure } from "@/lib/access-policy"
 
 const startSession =
   chat.createStartSessionAction<typeof chatAgent>("chat-agent")
@@ -27,7 +27,7 @@ async function requireChatOwner(chatId: string) {
 
 async function chatAction<T>(
   operation: () => Promise<T>
-): Promise<{ data: T } | { error: string } | BillingFailure> {
+): Promise<{ data: T } | { error: string } | AccessFailure> {
   try {
     const denied = await getPaidAccessError()
     if (denied) return denied

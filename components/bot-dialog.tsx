@@ -1,5 +1,6 @@
 "use client";
 
+import { useSessionAction } from "@/hooks/use-session-action";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,7 +10,7 @@ import { useForm } from "react-hook-form";
 import type { z } from "zod";
 
 import { createBot, deleteBot, updateBot } from "@/actions/bot";
-import { usePaidAccess, handleBillingFailure } from "@/components/paid-access";
+import { usePaidAccess, handleAccessFailure } from "@/components/paid-access";
 import { ChatAvatar } from "@/components/chat-avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -89,6 +90,7 @@ export function BotDialog({
   const [deleting, setDeleting] = React.useState(false);
   const router = useRouter();
   const requirePaidAccess = usePaidAccess();
+  const sessionAction = useSessionAction();
 
   const form = useForm<BotFormValues>({
     resolver: zodResolver(botFormSchema),
@@ -123,16 +125,16 @@ export function BotDialog({
     setServerError(null);
     try {
       if (bot) {
-        const result = await updateBot({ ...values, id: bot.id, avatar: faceSeed });
-        if (handleBillingFailure(result)) return;
+        const result = await sessionAction(() => updateBot({ ...values, id: bot.id, avatar: faceSeed }));
+        if (handleAccessFailure(result)) return;
         toast.add({
           title: "Bot updated",
           description: `${values.name} is up to date.`,
           type: "success",
         });
       } else {
-        const result = await createBot({ ...values, avatar: faceSeed });
-        if (handleBillingFailure(result)) return;
+        const result = await sessionAction(() => createBot({ ...values, avatar: faceSeed }));
+        if (handleAccessFailure(result)) return;
         if ("error" in result) {
           setServerError(result.error);
           return;
@@ -163,8 +165,8 @@ export function BotDialog({
     }
     setDeleting(true);
     try {
-      const result = await deleteBot({ id: bot.id });
-      if (handleBillingFailure(result)) return;
+      const result = await sessionAction(() => deleteBot({ id: bot.id }));
+      if (handleAccessFailure(result)) return;
       toast.add({
         title: "Bot deleted",
         description: `${bot.name} is gone.`,

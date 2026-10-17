@@ -1,8 +1,9 @@
 "use client"
+import { useSessionAction } from "@/hooks/use-session-action"
 import {
   usePaidAccess,
   useVerifiedPaidAccess,
-  handleBillingFailure,
+  handleAccessFailure,
 } from "@/components/paid-access"
 import { verifyPaidAccess } from "@/actions/billing"
 import { toast } from "@/components/ui/toast"
@@ -39,6 +40,7 @@ const ChatDesktopContext = createContext<{
 
 export function ChatDesktopProvider({ children }: { children: ReactNode }) {
   const requirePaidAccess = usePaidAccess()
+  const sessionAction = useSessionAction()
   const paid = useVerifiedPaidAccess()
   const [open, setOpen] = useState(false)
   const [hasOpened, setHasOpened] = useState(false)
@@ -62,9 +64,9 @@ export function ChatDesktopProvider({ children }: { children: ReactNode }) {
             return
           }
           if (!requirePaidAccess()) return
-          void verifyPaidAccess()
+          void sessionAction(() => verifyPaidAccess())
             .then((result) => {
-              if (handleBillingFailure(result)) return
+              if (handleAccessFailure(result)) return
               setHasOpened(true)
               setOpen(true)
             })

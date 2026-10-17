@@ -23,10 +23,14 @@ import {
 } from "@/components/ui/dialog"
 import { toast } from "@/components/ui/toast"
 import {
+  isAuthenticationFailure,
+  authenticationFailure,
+} from "@/lib/auth-policy"
+import type { AccessFailure } from "@/lib/access-policy"
+import {
   isBillingFailure,
   paidPlanMessage,
   paidPlanSlug,
-  type BillingFailure,
 } from "@/lib/billing-policy"
 
 const PaidAccessContext = createContext(false)
@@ -140,25 +144,51 @@ export function showUpgradeToast() {
   })
 }
 
-export function handleBillingFailure(value: unknown): value is BillingFailure {
+export function handleAccessFailure(value: unknown): value is AccessFailure {
+  if (isAuthenticationFailure(value)) {
+    toast.add({
+      title: "Sign in required",
+      description: (
+        <>
+          {value.error}{" "}
+          <Link
+            href={`/sign-in?redirect_url=${encodeURIComponent(window.location.href)}`}
+            className="underline"
+          >
+            Sign in
+          </Link>
+        </>
+      ),
+      type: "error",
+    })
+    return true
+  }
   if (!isBillingFailure(value)) return false
   showUpgradeToast()
   return true
 }
 
 export function notifyBillingError(error: Error) {
+  if (error.message === authenticationFailure.error) {
+    handleAccessFailure(authenticationFailure)
+    return
+  }
   if (error.message.includes(paidPlanMessage)) showUpgradeToast()
 }
 
 export function usePaidAccess() {
   const verified = useContext(PaidAccessContext)
-  const { isLoaded, has } = useAuth()
+  const { isLoaded, isSignedIn, has } = useAuth()
   return useCallback(() => {
-    if (verified && !isLoaded) return false
+    if (!isLoaded) return false
+    if (!isSignedIn) {
+      handleAccessFailure(authenticationFailure)
+      return false
+    }
     if (verified && has?.({ plan: paidPlanSlug })) return true
     showUpgradeToast()
     return false
-  }, [isLoaded, has, verified])
+  }, [isLoaded, isSignedIn, has, verified])
 }
 
 export function useVerifiedPaidAccess() {

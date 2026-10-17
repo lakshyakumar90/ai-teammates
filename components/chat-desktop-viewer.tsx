@@ -1,5 +1,6 @@
 "use client"
 
+import { useSessionAction } from "@/hooks/use-session-action"
 import type RFB from "@novnc/novnc"
 import {
   useCallback,
@@ -11,7 +12,7 @@ import {
 import { MaximizeIcon, MinimizeIcon } from "lucide-react"
 
 import { loadChatDesktop } from "@/actions/desktop"
-import { handleBillingFailure } from "@/components/paid-access"
+import { handleAccessFailure } from "@/components/paid-access"
 import { useChatDesktop } from "@/components/chat-desktop"
 import { Button } from "@/components/ui/button"
 import {
@@ -80,6 +81,7 @@ export function ChatDesktopPreview() {
 // This component stays mounted outside the conditional panel. Only the existing
 // canvas host moves; the RFB instance and its WebSocket stay alive in both views.
 export function ChatDesktopViewer({ chatId }: { chatId: string }) {
+  const sessionAction = useSessionAction()
   const {
     open,
     hasOpened,
@@ -118,7 +120,10 @@ export function ChatDesktopViewer({ chatId }: { chatId: string }) {
     let canvasObserver: MutationObserver | undefined
     setConnection({ state: "loading" })
     if (!request.current || request.current.attempt !== attempt) {
-      request.current = { attempt, promise: loadChatDesktop(chatId) }
+      request.current = {
+        attempt,
+        promise: sessionAction(() => loadChatDesktop(chatId)),
+      }
     }
     const fail = (message: string) => {
       if (active) setConnection({ state: "error", error: message })
@@ -128,7 +133,7 @@ export function ChatDesktopViewer({ chatId }: { chatId: string }) {
       .then(([result, { default: RFB }]) => {
         if (!active) return
         if ("error" in result) {
-          handleBillingFailure(result)
+          handleAccessFailure(result)
           fail(result.error)
           return
         }
@@ -174,7 +179,15 @@ export function ChatDesktopViewer({ chatId }: { chatId: string }) {
       rfb?.disconnect()
       if (client.current === rfb) client.current = null
     }
-  }, [hasOpened, host, chatId, attempt, setConnection, setAspectRatio])
+  }, [
+    hasOpened,
+    host,
+    chatId,
+    attempt,
+    setConnection,
+    setAspectRatio,
+    sessionAction,
+  ])
 
   useLayoutEffect(() => {
     if (!host) return

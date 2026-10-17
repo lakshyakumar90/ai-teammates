@@ -15,8 +15,7 @@ export async function createGroupChat(
   return logOperation("actions.group-chat.createGroupChat", async () => {
     const denied = await getPaidAccessError()
     if (denied) return denied
-    const { userId } = await auth()
-    if (!userId) throw new Error("Not authenticated")
+    const { userId } = await auth.protect()
     const { name, botIds } = groupChatFormSchema.parse(input)
     const owned = await db
       .select({ id: bots.id })
@@ -49,8 +48,7 @@ export async function updateGroupChat(
   return logOperation("actions.group-chat.updateGroupChat", async () => {
     const denied = await getPaidAccessError()
     if (denied) return denied
-    const { userId } = await auth()
-    if (!userId) throw new Error("Not authenticated")
+    const { userId } = await auth.protect()
     const { id, name, botIds } = updateGroupChatSchema.parse(input)
     const ownedGroup = and(
       eq(chats.id, id),
@@ -89,8 +87,7 @@ export async function deleteGroupChat(
   return logOperation("actions.group-chat.deleteGroupChat", async () => {
     const denied = await getPaidAccessError()
     if (denied) return denied
-    const { userId } = await auth()
-    if (!userId) throw new Error("Not authenticated")
+    const { userId } = await auth.protect()
     const { id } = deleteGroupChatSchema.parse(input)
     const [deleted] = await db
       .delete(chats)

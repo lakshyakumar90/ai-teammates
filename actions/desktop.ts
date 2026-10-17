@@ -9,15 +9,16 @@ import { getSandboxVncUrl } from "@/lib/daytona-vnc"
 import { sanitizeDetail } from "@/lib/ai/chat-error"
 import { getChat } from "@/queries/chats"
 import { getPaidAccessError } from "@/lib/billing"
-import type { BillingFailure } from "@/lib/billing-policy"
+import { authenticationFailure } from "@/lib/auth-policy"
+import type { AccessFailure } from "@/lib/access-policy"
 import { UsageLimitError } from "@/lib/usage-policy"
 
 export async function loadChatDesktop(
   chatId: string
-): Promise<{ url: string } | { error: string } | BillingFailure> {
+): Promise<{ url: string } | { error: string } | AccessFailure> {
   return logOperation("actions.desktop.loadChatDesktop", async () => {
     const { userId } = await auth()
-    if (!userId) return { error: "Not authenticated." }
+    if (!userId) return authenticationFailure
     if (!z.string().min(1).safeParse(chatId).success) {
       return { error: "Invalid chat ID." }
     }

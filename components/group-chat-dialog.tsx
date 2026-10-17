@@ -1,8 +1,9 @@
 "use client"
 
+import { useSessionAction } from "@/hooks/use-session-action"
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { usePaidAccess, handleBillingFailure } from "@/components/paid-access"
+import { usePaidAccess, handleAccessFailure } from "@/components/paid-access"
 import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import type { z } from "zod"
@@ -74,6 +75,7 @@ export function GroupChatDialog({
   const [serverError, setServerError] = React.useState<string>()
   const router = useRouter()
   const requirePaidAccess = usePaidAccess()
+  const sessionAction = useSessionAction()
   const form = useForm<z.infer<typeof groupChatFormSchema>>({
     resolver: zodResolver(groupChatFormSchema),
     values: { name: group?.name ?? "", botIds: group?.botIds ?? [] },
@@ -111,9 +113,11 @@ export function GroupChatDialog({
             setServerError(undefined)
             try {
               const chat = group
-                ? await updateGroupChat({ ...values, id: group.id })
-                : await createGroupChat(values)
-              if (handleBillingFailure(chat)) return
+                ? await sessionAction(() =>
+                    updateGroupChat({ ...values, id: group.id })
+                  )
+                : await sessionAction(() => createGroupChat(values))
+              if (handleAccessFailure(chat)) return
               toast.add({
                 title: group ? "Group chat updated" : "Group chat created",
                 description: group
@@ -244,8 +248,10 @@ export function GroupChatDialog({
                         setServerError(undefined)
                         try {
                           if (!requirePaidAccess()) return
-                          const result = await deleteGroupChat({ id: group.id })
-                          if (handleBillingFailure(result)) return
+                          const result = await sessionAction(() =>
+                            deleteGroupChat({ id: group.id })
+                          )
+                          if (handleAccessFailure(result)) return
                           toast.add({
                             title: "Group chat deleted",
                             description: `${group.name} was deleted.`,

@@ -1,5 +1,8 @@
 "use client"
 
+import { useSessionAction } from "@/hooks/use-session-action"
+import { useAuth } from "@clerk/nextjs"
+import Link from "next/link"
 import { useChat } from "@ai-sdk/react"
 import {
   useLoadTranscript,
@@ -228,12 +231,43 @@ function unwrapChatAction<T>(result: { data: T } | { error: string }) {
 }
 
 export function Chat(props: ChatProps) {
+  const { isLoaded, isSignedIn } = useAuth()
+  if (!isLoaded)
+    return (
+      <div
+        role="status"
+        className="flex flex-1 items-center justify-center gap-2"
+      >
+        <Spinner />
+        <span className="sr-only">Verifying session</span>
+      </div>
+    )
+  if (!isSignedIn)
+    return (
+      <div role="alert" className="p-4">
+        Please{" "}
+        <Link
+          href={`/sign-in?redirect_url=${encodeURIComponent(`/chats/${props.chatId}`)}`}
+          className="underline"
+        >
+          sign in
+        </Link>{" "}
+        to continue this conversation.
+      </div>
+    )
+  return <AuthenticatedChat key={props.chatId} {...props} />
+}
+
+function AuthenticatedChat(props: ChatProps) {
+  const sessionAction = useSessionAction()
   const transport = useTriggerChatTransport<typeof chatAgent>({
     task: "chat-agent",
     accessToken: async ({ chatId }) =>
-      unwrapChatAction(await mintChatAccessToken(chatId)),
+      unwrapChatAction(await sessionAction(() => mintChatAccessToken(chatId))),
     startSession: async ({ chatId, clientData }) =>
-      unwrapChatAction(await startChatSession({ chatId, clientData })),
+      unwrapChatAction(
+        await sessionAction(() => startChatSession({ chatId, clientData }))
+      ),
     clientData: { modelId: props.defaultModelId },
   })
   const transcript = useLoadTranscript(
@@ -244,7 +278,9 @@ export function Chat(props: ChatProps) {
       transport.setSession(chatId, {
         publicAccessToken: session.publicAccessToken,
       })
-      return unwrapChatAction(await loadChatTranscript({ chatId }))
+      return unwrapChatAction(
+        await sessionAction(() => loadChatTranscript({ chatId }))
+      )
     },
     { transport }
   )

@@ -1,12 +1,13 @@
 "use client"
 
+import { useSessionAction } from "@/hooks/use-session-action"
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import type { z } from "zod"
 import { getMemoryPreferences, updateMemoryPreferences } from "@/actions/memory"
-import { usePaidAccess, handleBillingFailure } from "@/components/paid-access"
+import { usePaidAccess, handleAccessFailure } from "@/components/paid-access"
 import { memoryPreferencesFormSchema } from "@/lib/db/schema"
 import { defaultMemoryPreferences } from "@/lib/ai/memory-manager"
 import { Button } from "@/components/ui/button"
@@ -73,6 +74,7 @@ export function MemorySettingsDialog({
   const [error, setError] = React.useState<string>()
   const router = useRouter()
   const requirePaidAccess = usePaidAccess()
+  const sessionAction = useSessionAction()
   const form = useForm<z.infer<typeof memoryPreferencesFormSchema>>({
     resolver: zodResolver(memoryPreferencesFormSchema),
     defaultValues: initialPreferences ?? defaultMemoryPreferences,
@@ -104,8 +106,10 @@ export function MemorySettingsDialog({
         if (!requirePaidAccess()) return
         setError(undefined)
         try {
-          const result = await updateMemoryPreferences(input)
-          if (handleBillingFailure(result)) return
+          const result = await sessionAction(() =>
+            updateMemoryPreferences(input)
+          )
+          if (handleAccessFailure(result)) return
           toast.add({ title: "Memory settings updated", type: "success" })
           setOpen(false)
           router.refresh()
