@@ -15,6 +15,7 @@ import {
 import { UsageLimitError, usageLimits } from "./usage-policy"
 import type { stopSandboxLease } from "../trigger/sandbox-usage"
 import { logger, errorType } from "./logging"
+import { setTimeout as delay } from "node:timers/promises"
 
 export async function stopLease(userId: string, leaseId: string) {
   // Claim the stop before contacting Daytona. Concurrent UI/timer/recovery
@@ -91,10 +92,26 @@ export async function withSandboxLease(
   start: () => Promise<Sandbox>
 ) {
   const period = await ensureUsagePeriod(userId)
-  const now = await usageNow()
-  const existing = await db.query.sandboxLeases.findFirst({
+  let now = await usageNow()
+  let existing = await db.query.sandboxLeases.findFirst({
     where: eq(sandboxLeases.userId, userId),
   })
+  // The desktop preview and chat memory can request the same sandbox together.
+  // Let the request holding the startup lease finish instead of failing chat.
+  const startupDeadline = Date.now() + 30_000
+  while (
+    existing &&
+    !existing.ready &&
+    !existing.stoppingUntil &&
+    existing.endsAt.getTime() > now &&
+    Date.now() < startupDeadline
+  ) {
+    await delay(500)
+    existing = await db.query.sandboxLeases.findFirst({
+      where: eq(sandboxLeases.userId, userId),
+    })
+    now = await usageNow()
+  }
   if (existing) {
     if (existing.endsAt.getTime() <= now || existing.stoppingUntil) {
       await stopLease(userId, existing.id)

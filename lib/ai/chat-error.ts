@@ -1,5 +1,6 @@
 import { APICallError, RetryError, StreamProviderError } from "ai"
 import { ApiError } from "@trigger.dev/sdk"
+import { DaytonaError } from "@daytona/sdk"
 
 import { ModelConfigurationError } from "./models"
 import { PaidPlanRequiredError } from "../billing-policy"
@@ -55,6 +56,16 @@ export function chatErrorMessage(
             : "The Trigger.dev service could not complete the request. Retry when the connection is available."
     return `Trigger.dev${status ? ` (HTTP ${status})` : ""}: ${summary}`
   }
+  if (error instanceof DaytonaError) {
+    const status = error.statusCode
+    if (/Module .*not available|Cannot find module/.test(error.message))
+      return "The bot environment is missing a required server dependency. Please contact support; changing models will not fix this."
+    const summary =
+      status === 401 || status === 403
+        ? "Sandbox access denied. Check the server's Daytona credentials and permissions."
+        : "The bot environment could not be accessed. Retry shortly."
+    return `Daytona${status ? ` (HTTP ${status})` : ""}: ${summary}`
+  }
   if (APICallError.isInstance(error)) {
     const ollamaURL = process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434/v1"
     const isOllama = error.url.startsWith(ollamaURL.replace(/\/$/, "") + "/")
@@ -70,8 +81,12 @@ export function chatErrorMessage(
               ? "Google"
               : "Model provider")
     let detail = ""
+    let providerStatus: number | undefined
     try {
       const body = JSON.parse(error.responseBody || "{}")
+      const code = Number(body.error?.code)
+      if (Number.isInteger(code) && code >= 400 && code <= 599)
+        providerStatus = code
       detail = sanitizeDetail(
         typeof body.error === "string"
           ? body.error
@@ -80,7 +95,8 @@ export function chatErrorMessage(
     } catch {
       /* Non-JSON responses are not safe to show verbatim. */
     }
-    const status = error.statusCode
+    // Some OpenRouter upstream failures arrive as error envelopes with HTTP 200.
+    const status = providerStatus ?? error.statusCode
     if (status === undefined) {
       return isOllama
         ? "Cannot reach Ollama from the Trigger.dev worker. Start Ollama and check OLLAMA_BASE_URL. A cloud worker cannot reach your computer through localhost."

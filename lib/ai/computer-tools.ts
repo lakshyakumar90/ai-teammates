@@ -1,4 +1,4 @@
-import { DaytonaError, type Sandbox } from "@daytona/sdk"
+import type { Sandbox } from "@daytona/sdk"
 import { tool } from "ai"
 import { z } from "zod"
 
@@ -6,11 +6,7 @@ import { getChatBot } from "./bot-context"
 import { managedSandbox } from "../sandbox-usage"
 import { requireUserPaidPlan } from "../billing-agent"
 import { logger, errorType } from "../logging"
-import {
-  ChatRequestError,
-  chatErrorMessage,
-  sanitizeDetail,
-} from "./chat-error"
+import { ChatRequestError, chatErrorMessage } from "./chat-error"
 
 const point = {
   x: z.number().int().nonnegative(),
@@ -65,11 +61,6 @@ export function createComputerTools(
           duration_ms: Date.now() - startedAt,
           "error.type": errorType(error),
         })
-        if (error instanceof DaytonaError) {
-          throw new ChatRequestError(
-            `Daytona${error.statusCode ? ` (HTTP ${error.statusCode})` : ""}: ${sanitizeDetail(error.message)}`
-          )
-        }
         throw new ChatRequestError(chatErrorMessage(error))
       }
     })
