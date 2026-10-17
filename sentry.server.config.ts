@@ -1,0 +1,8 @@
+import * as Sentry from "@sentry/nextjs"
+import { sentryDsn } from "./lib/sentry"
+
+Sentry.init({
+  dsn: sentryDsn,
+  environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV,
+  tracesSampleRate: process.env.NODE_ENV === "development" ? 1 : 0.1,
+})

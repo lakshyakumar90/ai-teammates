@@ -1,5 +1,24 @@
 # Next.js template
 
+## Sentry
+
+Next.js browser, server, and edge errors report to `devtinder-oe/ai-teammates`.
+The public DSN is in `lib/sentry.ts`. Tracing samples all development requests
+and 10% of production requests. The separate Trigger.dev worker is not instrumented
+by this Next.js setup.
+
+Before the production build, set `SENTRY_AUTH_TOKEN` in your hosting provider's
+secret store using a Sentry organization token with release/upload permissions.
+`withSentryConfig` uploads source maps to this project and removes generated maps
+after upload. Uploads include source code needed to show readable stack traces.
+Never put the token in a `NEXT_PUBLIC_` variable or commit it.
+
+Set `SENTRY_RELEASE` to the deployed commit SHA in the build environment if your
+host does not supply Git metadata. The build plugin injects the release into the
+SDKs. `VERCEL_ENV` / `NEXT_PUBLIC_VERCEL_ENV` distinguish Vercel environments;
+other hosts default to `NODE_ENV`. Deploy only after the source-map upload succeeds,
+then verify a fresh production error has readable source frames.
+
 ## Bot sandboxes
 
 Set `DAYTONA_API_KEY` in `.env.local` and restart Next.js. Creating a bot creates
