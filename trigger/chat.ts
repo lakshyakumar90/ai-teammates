@@ -23,6 +23,7 @@ import { responseTimeoutPolicy } from "../lib/ai/response-timeout"
 import { ChatRequestError, chatErrorMessage } from "../lib/ai/chat-error"
 import { requireUserPaidPlan } from "../lib/billing-agent"
 import { logger, errorType } from "../lib/logging"
+import { desktopProgressPolicy } from "../lib/ai/desktop-progress"
 
 export const chatAgent = chat.agent({
   id: "chat-agent",
@@ -176,6 +177,7 @@ export const chatAgent = chat.agent({
           instructions: `${buildBotInstructions(bot)}\n\n${await loadMemory(bot)}`,
           tools,
           stopWhen: stepCountIs(20),
+          prepareStep: desktopProgressPolicy(tools),
         })
 
       const members = await getGroupBots(chatId)

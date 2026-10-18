@@ -523,6 +523,14 @@ function ChatView({
                                       className="h-auto max-w-full rounded-md"
                                     />
                                   ) : undefined
+                                ) : name === "mouseScroll" &&
+                                  output &&
+                                  typeof output === "object" ? (
+                                  Object.fromEntries(
+                                    Object.entries(output).filter(
+                                      ([key]) => key !== "image"
+                                    )
+                                  )
                                 ) : (
                                   output
                                 )

@@ -25,6 +25,7 @@ export function sanitizeDetail(value: unknown) {
   return detail
     .replace(/Bearer\s+[^\s"']+/gi, "Bearer [redacted]")
     .replace(/\bsk[-_][a-zA-Z0-9_-]+/g, "[redacted]")
+    .replace(/\bAIza[a-zA-Z0-9_-]+/g, "[redacted]")
     .replace(/([?&](?:key|api_key|token)=)[^\s&"']+/gi, "$1[redacted]")
     .split(/[\r\n]/)[0]
     .slice(0, 400)

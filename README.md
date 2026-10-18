@@ -30,7 +30,10 @@ Trigger.dev continues to own worker tracing; this integration adds error capture
 `SENTRY_DSN` can override the shared project DSN for the worker.
 Set `SENTRY_RELEASE` to the same commit SHA at build time and in the worker
 environment. Set `SENTRY_AUTH_TOKEN` in the environment running the Trigger.dev
-deploy command to upload worker source maps using the Sentry esbuild plugin.
+deploy command to upload worker source maps. The Sentry esbuild plugin creates
+the release; a build-completion hook injects debug IDs and uploads the final
+worker artifacts after Trigger writes them to disk. Deployments fail if the
+upload fails or its credentials/release are missing.
 Restart the local Trigger.dev worker after these changes; production workers
 need a new deployment.
 

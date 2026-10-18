@@ -1,6 +1,8 @@
 import type { Sandbox } from "@daytona/sdk"
 import { tool } from "ai"
 import { z } from "zod"
+import { createHash } from "node:crypto"
+import { setTimeout as delay } from "node:timers/promises"
 
 import { getChatBot } from "./bot-context"
 import { managedSandbox } from "../sandbox-usage"
@@ -30,6 +32,9 @@ export function createComputerTools(
   supportsImages: boolean
 ) {
   let queue: Promise<unknown> = Promise.resolve()
+  const blockedScrolls = new Set<string>()
+  const screenHash = (image: string) =>
+    createHash("sha256").update(image).digest("hex")
 
   // Models can request several actions in one step. Preserve desktop/file order.
   function run<T>(
@@ -197,7 +202,7 @@ export function createComputerTools(
     }),
     mouseScroll: tool({
       description:
-        "Scroll at the given sandbox desktop coordinates. Amount is wheel ticks.",
+        "Scroll at observed coordinates. Amount is wheel ticks. Returns a private screen observation and whether the screen changed. If no progress or blocked, stop repeating this scroll: inspect the visible content, try a different scroll container, or answer the user. A wheel event alone does not prove movement or reaching the bottom.",
       inputSchema: z.object({
         ...point,
         direction: z.enum(["up", "down"]),
@@ -207,13 +212,65 @@ export function createComputerTools(
         requireVision()
         return run(
           async (sandbox) => {
+            const before = await sandbox.computerUse.screenshot.takeFullScreen()
+            if (!before.screenshot)
+              throw new ChatRequestError(
+                "Could not observe the screen before scrolling."
+              )
+            const signature = `${screenHash(before.screenshot)}:${x}:${y}:${direction}`
+            if (blockedScrolls.has(signature))
+              return {
+                scrollEventSent: false,
+                screenChanged: false,
+                blocked: true,
+                message:
+                  "This scroll already made no progress on this screen. No wheel event was sent. Read the visible content or choose a different action.",
+                image: before.screenshot.replace(
+                  /^data:image\/png;base64,/,
+                  ""
+                ),
+              }
             await sandbox.computerUse.mouse.scroll(x, y, direction, amount)
-            return { scrolled: true }
+            await delay(400, undefined, { signal: abortSignal })
+            const after = await sandbox.computerUse.screenshot.takeFullScreen()
+            if (!after.screenshot)
+              throw new ChatRequestError(
+                "Could not verify scrolling. Inspect the screen before another action."
+              )
+            const screenChanged =
+              screenHash(before.screenshot) !== screenHash(after.screenshot)
+            if (!screenChanged) blockedScrolls.add(signature)
+            return {
+              scrollEventSent: true,
+              screenChanged,
+              blocked: false,
+              message: screenChanged
+                ? "Screen changed. Inspect this observation before choosing the next action; stop once the requested content is visible."
+                : "No visible progress. You may be at the page boundary or over a non-scrollable area. Do not repeat this scroll. Read the visible content or change approach.",
+              image: after.screenshot.replace(/^data:image\/png;base64,/, ""),
+            }
           },
           abortSignal,
           true
         )
       },
+      toModelOutput: ({ output }) =>
+        supportsImages
+          ? {
+              type: "content",
+              value: [
+                {
+                  type: "text",
+                  text: JSON.stringify({ ...output, image: undefined }),
+                },
+                {
+                  type: "file",
+                  mediaType: "image/png",
+                  data: { type: "data", data: output.image },
+                },
+              ],
+            }
+          : { type: "text", value: output.message },
     }),
     keyboardType: tool({
       description: "Type text into the focused control in the sandbox desktop.",

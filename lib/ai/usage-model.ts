@@ -2,6 +2,8 @@ import { wrapLanguageModel, type LanguageModelMiddleware } from "ai"
 import { getModel } from "./models"
 import { currentUsagePeriod, reserveUsage, settleAI } from "../usage"
 import { tokenCost, UsageLimitError } from "../usage-policy"
+import { getUserApiKeys } from "./user-api-keys"
+import { requireUserPaidPlan } from "../billing-agent"
 
 // Published standard rates, USD / million tokens. No cache discounts are
 // assumed. Unknown models fail closed rather than silently becoming free.
@@ -43,6 +45,25 @@ export async function meteredModel(
   userId: string,
   periodId: string
 ) {
+  const keys = await getUserApiKeys(userId)
+  const key = modelId.startsWith("gemini-")
+    ? keys.gemini
+    : modelId.startsWith("openrouter-")
+      ? keys.openrouter
+      : undefined
+  // Provider bills personal-key calls directly, including memory extraction.
+  // Keep per-call subscription checks without reserving app AI credits.
+  if (key)
+    return wrapLanguageModel({
+      model: getModel(modelId, key),
+      middleware: {
+        specificationVersion: "v4",
+        transformParams: async ({ params }) => {
+          await requireUserPaidPlan(userId)
+          return params
+        },
+      },
+    })
   const rate = await modelRate(modelId)
   const reserve = async () => {
     // Recheck the subscription on every provider request, including handoffs,

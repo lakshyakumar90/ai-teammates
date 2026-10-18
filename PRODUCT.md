@@ -14,6 +14,8 @@ Create AI bots with names, avatars, jobs, instructions, and individual computers
 - Global user memory, group shared memory, and individual bot memory, controlled through Memory & privacy settings.
 - Each bot has a Daytona sandbox. Desktop access is available in individual chats; group chats do not offer a desktop panel.
 - Clerk authentication protects the dashboard and chats.
+- Profile lets users save, replace, or remove personal Gemini and OpenRouter API keys. Keys live in Clerk private metadata and only saved-status flags reach the settings UI. The worker resolves keys per user each turn, including memory processing. Personal-key calls use direct provider billing and bypass the app AI allowance; subscriptions and sandbox limits still apply. Removing a key restores the server credential fallback.
+- Desktop scrolling observes the screen before and after the wheel event and returns a private observation. Unchanged screens block repeated scrolling at the same target and direction. The agent also bounds repeated actions and scroll attempts, keeps recovery tools available, and reserves the final step for a response. Screen changes alone do not prove scrolling or a page boundary.
 
 ## Landing page
 

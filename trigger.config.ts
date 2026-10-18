@@ -6,6 +6,7 @@ import {
 } from "@trigger.dev/build/extensions/core"
 import { sentryEsbuildPlugin } from "@sentry/esbuild-plugin"
 import { loadEnvConfig } from "@next/env"
+import { createSentrySDK } from "sentry"
 
 // Load deploy credentials before build plugins are configured.
 loadEnvConfig(process.cwd())
@@ -68,9 +69,31 @@ export default defineConfig({
           project: "ai-teammates",
           authToken: process.env.SENTRY_AUTH_TOKEN,
           release: { name: process.env.SENTRY_RELEASE },
+          // Trigger writes esbuild's in-memory outputs after onEnd hooks.
+          // Upload and inject IDs only once the final artifacts exist below.
+          sourcemaps: { disable: true },
         }),
         { placement: "last", target: "deploy" }
       ),
+      {
+        name: "sentry-worker-sourcemaps",
+        onBuildComplete: async (context, manifest) => {
+          if (context.target !== "deploy") return
+          if (!process.env.SENTRY_AUTH_TOKEN || !process.env.SENTRY_RELEASE)
+            throw new Error(
+              "Worker deployments require SENTRY_AUTH_TOKEN and SENTRY_RELEASE."
+            )
+          await createSentrySDK({
+            org: "devtinder-oe",
+            project: "ai-teammates",
+            token: process.env.SENTRY_AUTH_TOKEN,
+          }).sourcemap.upload({
+            directory: manifest.outputPath,
+            release: process.env.SENTRY_RELEASE,
+          })
+          context.logger.log("Worker source maps uploaded to Sentry.")
+        },
+      },
     ],
   },
 })

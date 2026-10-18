@@ -1,5 +1,5 @@
 // Shared by the Next.js server and the Trigger.dev worker; client imports must be type-only.
-import { google } from "@ai-sdk/google"
+import { google, createGoogleGenerativeAI } from "@ai-sdk/google"
 import { groq } from "@ai-sdk/groq"
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible"
 
@@ -99,17 +99,28 @@ export type ModelOption = (typeof modelOptions)[number]
 export class ModelConfigurationError extends Error {
   constructor(variable: string) {
     super(
-      `Set ${variable} for the Next.js server and Trigger.dev worker, then restart both.`
+      `${["GOOGLE_GENERATIVE_AI_API_KEY", "OPENROUTER_API_KEY"].includes(variable) ? "Add your API key in Profile, or set" : "Set"} ${variable} for the Next.js server and Trigger.dev worker, then restart both.`
     )
     this.name = "ModelConfigurationError"
   }
 }
 
-export function getModel(modelId: string) {
+export function getModel(modelId: string, apiKey?: string) {
   if (!Object.hasOwn(models, modelId)) {
     throw new Error("Unknown model")
   }
   const entry = models[modelId as ModelId]
+  if (apiKey && entry.provider === "Google Gemini")
+    return createGoogleGenerativeAI({ apiKey })(entry.model.modelId)
+  if (apiKey && entry.provider === "OpenRouter")
+    return createOpenAICompatible({
+      name: "openrouter",
+      baseURL: "https://openrouter.ai/api/v1",
+      apiKey,
+      includeUsage: true,
+      supportsStructuredOutputs: true,
+      supportsMultiPartToolContent: true,
+    })(entry.model.modelId)
   if (entry.apiKeyEnv && !process.env[entry.apiKeyEnv]?.trim()) {
     throw new ModelConfigurationError(entry.apiKeyEnv)
   }

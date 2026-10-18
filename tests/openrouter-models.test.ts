@@ -25,7 +25,18 @@ test("OpenRouter exposes only verified free models and accurate image capability
 
 test("OpenRouter sends strict memory schemas, image tool content, and stream usage options", async () => {
   const original = globalThis.fetch
-  const requests: Record<string, any>[] = []
+  const requests: {
+    stream?: boolean
+    response_format: {
+      type: string
+      json_schema: {
+        strict: boolean
+        schema: { properties: Record<string, unknown> }
+      }
+    }
+    messages: { content: { type: string }[] }[]
+    stream_options: { include_usage: boolean }
+  }[] = []
   globalThis.fetch = async (_url, init) => {
     const request = JSON.parse(String(init?.body))
     requests.push(request)
