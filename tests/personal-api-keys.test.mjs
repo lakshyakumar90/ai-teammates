@@ -76,11 +76,11 @@ test("personal keys select the configured model without server provider credenti
     )
     assert.throws(
       () => getModel("gemini-3-flash"),
-      /GOOGLE_GENERATIVE_AI_API_KEY/
+      /Add your Google Gemini API key/
     )
     assert.throws(
       () => getModel("openrouter-dots-3-note"),
-      /OPENROUTER_API_KEY/
+      /Add your OpenRouter API key/
     )
     assert.throws(() => getModel("unknown", "key"), /Unknown model/)
   } finally {

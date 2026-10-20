@@ -2,8 +2,10 @@ import * as Sentry from "@sentry/node"
 import { tasks } from "@trigger.dev/sdk"
 import { sentryDsn } from "../lib/sentry"
 import { errorType } from "../lib/logging"
+import { redactAuthTelemetry } from "../lib/sentry-privacy"
 
 Sentry.init({
+  beforeSend: redactAuthTelemetry,
   dsn: process.env.SENTRY_DSN ?? sentryDsn,
   environment: process.env.TRIGGER_ENVIRONMENT_TYPE ?? process.env.NODE_ENV,
   release: process.env.SENTRY_RELEASE,

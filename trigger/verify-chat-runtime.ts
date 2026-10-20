@@ -1,11 +1,11 @@
 import { schemaTask } from "@trigger.dev/sdk"
-import { generateText } from "ai"
+import { streamText } from "ai"
 import { z } from "zod"
 import { getChatMemory } from "../lib/ai/chat-memory"
 import { getChatSandbox } from "../lib/ai/computer-tools"
 import { getChatBot } from "../lib/ai/bot-context"
 import { meteredModel } from "../lib/ai/usage-model"
-import { ensureUsagePeriod } from "../lib/usage"
+import { trackWorkerRun } from "../lib/worker-usage"
 import { captureUserMemory } from "../lib/ai/memory-capture"
 
 // Operator-only smoke test: no conversation messages or memory content are returned.
@@ -29,21 +29,22 @@ export const verifyChatRuntime = schemaTask({
       await sandbox.fs.deleteFile(path)
     }
     const bot = await getChatBot(chatId)
-    const period = await ensureUsagePeriod(bot.userId)
-    const model = await meteredModel(modelId, bot.userId, period.id)
+    await trackWorkerRun(bot.userId, ctx.run.id, ctx.task.id)
+    const model = await meteredModel(modelId, bot.userId)
     await captureUserMemory({
       model,
+      chatgpt: modelId.startsWith("chatgpt"),
       messages: [{ role: "user", content: "Hello." }],
       signal: AbortSignal.timeout(30_000),
     })
-    const result = await generateText({
+    const result = streamText({
       model,
       prompt: "Reply with the single word OK. Do not call tools.",
-      maxOutputTokens: 1024,
+      ...(modelId.startsWith("chatgpt") ? {} : { maxOutputTokens: 1024 }),
       maxRetries: 0,
       timeout: 30_000,
     })
-    if (!result.text.trim()) throw new Error("Model returned no text")
+    if (!(await result.text).trim()) throw new Error("Model returned no text")
     return {
       memoryRead: true,
       fileTransfer: true,

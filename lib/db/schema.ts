@@ -21,8 +21,6 @@ export const usagePeriods = pgTable(
     userId: text("user_id").notNull(),
     startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
     endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
-    aiMicros: bigint("ai_micros", { mode: "number" }).notNull().default(0),
-    aiCalls: integer("ai_calls").notNull().default(0),
     sandboxSeconds: integer("sandbox_seconds").notNull().default(0),
     botCreations: integer("bot_creations").notNull().default(0),
   },
@@ -39,6 +37,7 @@ export const usageEntries = pgTable(
     kind: text("kind").notNull(),
     modelId: text("model_id"),
     amount: bigint("amount", { mode: "number" }).notNull(),
+    durationMs: bigint("duration_ms", { mode: "number" }).notNull().default(0),
     inputTokens: integer("input_tokens"),
     outputTokens: integer("output_tokens"),
     settled: boolean("settled").notNull().default(false),
@@ -68,6 +67,44 @@ export const botCapacity = pgTable("bot_capacity", {
   userId: text("user_id").primaryKey(),
   count: integer("count").notNull().default(0),
 })
+
+// OAuth credentials stay encrypted at rest and never reach browser props.
+export const chatgptConnections = pgTable("chatgpt_connections", {
+  userId: text("user_id").primaryKey(),
+  subject: text("subject").notNull(),
+  clientId: text("client_id").notNull(),
+  label: text("label").notNull(),
+  credentials: text("credentials").notNull(),
+  scopes: text("scopes").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  refreshLockUntil: timestamp("refresh_lock_until", { withTimezone: true }),
+  revision: integer("revision").notNull().default(0),
+})
+
+export const oauthAttempts = pgTable("oauth_attempts", {
+  stateHash: text("state_hash").primaryKey(),
+  userId: text("user_id").notNull(),
+  secrets: text("secrets").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+})
+
+// Vendor-reported cumulative usage, reconciled by run ID rather than turn count.
+export const workerRuns = pgTable(
+  "worker_runs",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    periodId: text("period_id")
+      .notNull()
+      .references(() => usagePeriods.id, { onDelete: "cascade" }),
+    taskId: text("task_id").notNull(),
+    costMicros: bigint("cost_micros", { mode: "number" }).notNull().default(0),
+    durationMs: bigint("duration_ms", { mode: "number" }).notNull().default(0),
+    complete: boolean("complete").notNull().default(false),
+    syncedAt: timestamp("synced_at", { withTimezone: true }),
+  },
+  (t) => [index("worker_runs_period_idx").on(t.periodId)]
+)
 
 export const bots = pgTable(
   "bots",

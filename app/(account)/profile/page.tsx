@@ -1,23 +1,25 @@
 import type { Metadata } from "next"
 import { UserProfile } from "@clerk/nextjs"
-import { auth } from "@clerk/nextjs/server"
-import { getUserApiKeys } from "@/lib/ai/user-api-keys"
-import { ApiKeySettings } from "@/components/api-key-settings"
+import Link from "next/link"
 
 export const metadata: Metadata = { title: "Profile — AI Teammates" }
 
-export default async function ProfilePage() {
-  const { userId } = await auth.protect()
-  const keys = await getUserApiKeys(userId)
+export default function ProfilePage() {
   return (
     <section className="min-w-0 flex-1 px-4 py-8 sm:px-8 sm:py-12">
       <header className="mx-auto mb-8 max-w-4xl">
         <h1 className="text-3xl font-semibold tracking-tight">Profile</h1>
         <p className="mt-2 text-muted-foreground">
-          Manage your account details and security.
+          Manage your account details and security.{" "}
+          <Link
+            href="/api-keys"
+            className="font-medium text-foreground underline underline-offset-4"
+          >
+            Manage your API keys
+          </Link>
+          .
         </p>
       </header>
-      <ApiKeySettings gemini={!!keys.gemini} openrouter={!!keys.openrouter} />
       <div className="flex min-w-0 justify-center">
         <UserProfile
           routing="hash"

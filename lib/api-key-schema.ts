@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 export const apiKeySchema = z.object({
-  provider: z.enum(["gemini", "openrouter"]),
+  provider: z.enum(["gemini", "openrouter", "openai"]),
   key: z
     .string()
     .trim()

@@ -1,5 +1,4 @@
 export const usageLimits = {
-  aiMicros: 5_000_000,
   sandboxSeconds: 20 * 3600,
   maxBots: 3,
   sandboxSessionSeconds: 15 * 60,

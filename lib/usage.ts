@@ -45,7 +45,7 @@ export async function ensureUsagePeriod(userId: string) {
   return period
 }
 
-type Kind = "ai" | "sandbox" | "bot"
+type Kind = "sandbox" | "bot"
 export async function reserveUsage(
   periodId: string,
   kind: Kind,
@@ -55,27 +55,15 @@ export async function reserveUsage(
   if (!Number.isSafeInteger(amount) || amount < 0)
     throw new Error("Invalid usage reservation")
   const id = nanoid()
-  const column =
-    kind === "ai"
-      ? sql`ai_micros`
-      : kind === "sandbox"
-        ? sql`sandbox_seconds`
-        : sql`bot_creations`
-  const limit =
-    kind === "ai"
-      ? usageLimits.aiMicros
-      : kind === "sandbox"
-        ? usageLimits.sandboxSeconds
-        : 1000000
+  const column = kind === "sandbox" ? sql`sandbox_seconds` : sql`bot_creations`
+  const limit = kind === "sandbox" ? usageLimits.sandboxSeconds : 1000000
   // The UPDATE takes a row lock and re-evaluates its predicate after contention.
   // The debit and ledger entry are a single atomic SQL statement.
   const result = await db.execute(sql`
     WITH debit AS (
-      UPDATE usage_periods SET ${column} = ${column} + ${amount},
-        ai_calls = ai_calls + ${kind === "ai" ? 1 : 0}
+      UPDATE usage_periods SET ${column} = ${column} + ${amount}
       WHERE id = ${periodId} AND ends_at > now()
         AND ${column} + ${amount} <= ${limit}
-        AND (${kind !== "ai"} OR ai_micros < ${usageLimits.aiMicros})
       RETURNING id
     )
     INSERT INTO usage_entries (id, period_id, kind, model_id, amount, settled)
@@ -84,7 +72,7 @@ export async function reserveUsage(
   if (!result.rows.length) {
     logger.warn("Usage reservation denied", { kind, modelId, amount })
     throw new UsageLimitError(
-      `${kind === "ai" ? "AI" : kind === "sandbox" ? "Sandbox runtime" : "Bot creation"} allowance reached, or insufficient allowance for this request.`
+      `${kind === "sandbox" ? "Sandbox runtime" : "Bot creation"} allowance reached, or insufficient allowance for this request.`
     )
   }
   logger.debug("Usage reserved", { entryId: id, kind, modelId, amount })
@@ -111,36 +99,6 @@ export async function releaseBotCapacity(userId: string) {
   await db.execute(
     sql`UPDATE bot_capacity SET count = greatest(0, count - 1) WHERE user_id = ${userId}`
   )
-}
-
-export async function settleAI(
-  id: string,
-  amount: number,
-  inputTokens: number,
-  outputTokens: number
-) {
-  if (
-    ![amount, inputTokens, outputTokens].every(
-      (n) => Number.isSafeInteger(n) && n >= 0
-    )
-  )
-    throw new Error("Invalid usage settlement")
-  // Claim the entry once. Retried finish hooks cannot double-debit or refund.
-  await db.execute(sql`WITH settled AS (
-    UPDATE usage_entries SET settled = true, amount = ${amount},
-      input_tokens = ${inputTokens}, output_tokens = ${outputTokens}
-    WHERE id = ${id} AND settled = false
-    RETURNING period_id, amount
-  ), original AS (
-    SELECT period_id, amount FROM usage_entries WHERE id = ${id} AND settled = false
-  ) UPDATE usage_periods p SET ai_micros = p.ai_micros + ${amount} - original.amount
-    FROM original, settled WHERE p.id = original.period_id`)
-  logger.info("AI usage settlement processed", {
-    entryId: id,
-    amount,
-    inputTokens,
-    outputTokens,
-  })
 }
 
 export async function refundUsage(id: string) {
@@ -179,7 +137,12 @@ export async function usageSnapshot(userId: string) {
     db
       .select()
       .from(usageEntries)
-      .where(eq(usageEntries.periodId, period.id))
+      .where(
+        and(
+          eq(usageEntries.periodId, period.id),
+          sql`${usageEntries.kind} IN ('sandbox', 'worker', 'bot')`
+        )
+      )
       .orderBy(desc(usageEntries.createdAt))
       .limit(20),
   ])

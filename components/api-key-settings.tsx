@@ -5,18 +5,29 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useRouter } from "next/navigation"
 import { z } from "zod"
+import { EyeIcon, EyeOffIcon, KeyRoundIcon } from "lucide-react"
 import { saveApiKey, removeApiKey } from "@/actions/api-keys"
 import { apiKeySchema, type ApiKeyProvider } from "@/lib/api-key-schema"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Separator } from "@/components/ui/separator"
+import {
+  InputGroup,
+  InputGroupInput,
+  InputGroupAddon,
+  InputGroupButton,
+} from "@/components/ui/input-group"
 import {
   Field,
   FieldGroup,
   FieldLabel,
   FieldError,
+  FieldDescription,
 } from "@/components/ui/field"
 import { Spinner } from "@/components/ui/spinner"
 import { toast } from "@/components/ui/toast"
+import { useSessionAction } from "@/hooks/use-session-action"
 
 function ProviderKey({
   provider,
@@ -28,22 +39,32 @@ function ProviderKey({
   const router = useRouter()
   const [error, setError] = useState<string>()
   const [removing, setRemoving] = useState(false)
+  const [hasKey, setHasKey] = useState(saved)
+  const [showKey, setShowKey] = useState(false)
+  const sessionAction = useSessionAction()
   const form = useForm<z.infer<typeof apiKeySchema>>({
     resolver: zodResolver(apiKeySchema),
     defaultValues: { provider, key: "" },
   })
   const pending = form.formState.isSubmitting || removing
-  const label = provider === "gemini" ? "Gemini" : "OpenRouter"
+  const label =
+    provider === "gemini"
+      ? "Gemini"
+      : provider === "openai"
+        ? "OpenAI"
+        : "OpenRouter"
   async function remove() {
     setError(undefined)
     setRemoving(true)
     try {
-      const result = await removeApiKey(provider)
+      const result = await sessionAction(() => removeApiKey(provider))
       if (result.error) {
         setError(result.error)
         return
       }
       form.reset({ provider, key: "" })
+      setHasKey(false)
+      setShowKey(false)
       toast.add({ title: `${label} key removed`, type: "success" })
       router.refresh()
     } catch {
@@ -53,87 +74,141 @@ function ProviderKey({
     }
   }
   return (
-    <form
-      onSubmit={form.handleSubmit(async (values) => {
-        setError(undefined)
-        try {
-          const result = await saveApiKey(values)
-          if (result.error) {
-            setError(result.error)
-            return
-          }
-          form.reset({ provider, key: "" })
-          toast.add({ title: `${label} key saved`, type: "success" })
-          router.refresh()
-        } catch {
-          setError("Could not save your key. Try again.")
-        }
-      })}
+    <section
+      aria-labelledby={`${provider}-title`}
+      className="flex min-w-0 flex-col gap-5"
     >
-      <FieldGroup>
-        <Field data-invalid={!!form.formState.errors.key}>
-          <FieldLabel htmlFor={`${provider}-key`}>
-            {label} API key {saved && "· Saved"}
-          </FieldLabel>
-          <Input
-            id={`${provider}-key`}
-            type="password"
-            autoComplete="off"
-            spellCheck={false}
-            placeholder={
-              saved ? "Enter a replacement key" : "Enter your API key"
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 id={`${provider}-title`} className="text-lg font-semibold">
+          {label}
+        </h2>
+        <Badge variant={hasKey ? "secondary" : "outline"} role="status">
+          {hasKey ? "Using your key" : "Key required"}
+        </Badge>
+      </div>
+      <form
+        aria-label={`${label} API key settings`}
+        onSubmit={form.handleSubmit(async (values) => {
+          setError(undefined)
+          try {
+            const result = await sessionAction(() => saveApiKey(values))
+            if (result.error) {
+              setError(result.error)
+              return
             }
-            aria-invalid={!!form.formState.errors.key}
-            disabled={pending}
-            {...form.register("key")}
-          />
-          <FieldError errors={[form.formState.errors.key]} />
-        </Field>
-        {error && <FieldError>{error}</FieldError>}
-        <div className="flex gap-2">
-          <Button type="submit" disabled={pending}>
-            {form.formState.isSubmitting && (
-              <Spinner data-icon="inline-start" />
-            )}
-            Save {label} key
-          </Button>
-          {saved && (
-            <Button
-              type="button"
-              variant="outline"
-              disabled={pending}
-              onClick={remove}
-            >
-              {removing && <Spinner data-icon="inline-start" />}Remove
+            form.reset({ provider, key: "" })
+            setHasKey(true)
+            setShowKey(false)
+            toast.add({ title: `${label} key saved`, type: "success" })
+            router.refresh()
+          } catch {
+            setError("Could not save your key. Try again.")
+          }
+        })}
+      >
+        <FieldGroup>
+          <Field
+            data-invalid={!!form.formState.errors.key}
+            data-disabled={pending}
+          >
+            <FieldLabel htmlFor={`${provider}-key`}>
+              {hasKey ? "Replace API key" : "API key"}
+            </FieldLabel>
+            <InputGroup>
+              <InputGroupInput
+                id={`${provider}-key`}
+                type={showKey ? "text" : "password"}
+                autoComplete="off"
+                spellCheck={false}
+                placeholder={
+                  hasKey
+                    ? "Paste a replacement key"
+                    : `Paste your ${label} API key`
+                }
+                aria-invalid={!!form.formState.errors.key}
+                disabled={pending}
+                {...form.register("key")}
+              />
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton
+                  size="icon-sm"
+                  aria-label={`${showKey ? "Hide" : "Show"} ${label} API key`}
+                  aria-pressed={showKey}
+                  disabled={pending}
+                  onClick={() => setShowKey((value) => !value)}
+                >
+                  {showKey ? <EyeOffIcon /> : <EyeIcon />}
+                </InputGroupButton>
+              </InputGroupAddon>
+            </InputGroup>
+            <FieldDescription>
+              {hasKey
+                ? "Your saved key stays private. Leave this blank to keep it."
+                : "Add your own key to use this provider. Your provider bills AI usage."}
+            </FieldDescription>
+            <FieldError errors={[form.formState.errors.key]} />
+          </Field>
+          {error && <FieldError role="alert">{error}</FieldError>}
+          <div className="flex flex-wrap gap-2">
+            <Button type="submit" disabled={pending}>
+              {form.formState.isSubmitting && (
+                <Spinner data-icon="inline-start" />
+              )}
+              {form.formState.isSubmitting
+                ? "Verifying key…"
+                : `${hasKey ? "Replace" : "Save"} ${label} key`}
             </Button>
-          )}
-        </div>
-      </FieldGroup>
-    </form>
+            {hasKey && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={pending}
+                onClick={remove}
+                aria-label={`Remove ${label} key`}
+              >
+                {removing && <Spinner data-icon="inline-start" />}Remove key
+              </Button>
+            )}
+          </div>
+        </FieldGroup>
+      </form>
+    </section>
   )
 }
 
 export function ApiKeySettings({
   gemini,
   openrouter,
+  openai = false,
 }: {
   gemini: boolean
   openrouter: boolean
+  openai?: boolean
 }) {
   return (
-    <section className="mx-auto mb-10 max-w-4xl space-y-6 rounded-xl border p-6">
-      <div className="space-y-2">
-        <h2 className="text-xl font-semibold">Your API keys</h2>
-        <p className="text-sm text-muted-foreground">
-          Use your own Gemini or OpenRouter account. Keys are stored privately
-          on the server and never shown again. Your provider bills these calls
-          directly, including memory processing; they do not use your app AI
-          allowance. Your subscription and sandbox limits still apply. Remove a
-          key to use the app’s key again. Changes apply to your next message.
-        </p>
-      </div>
-      <ProviderKey provider="gemini" saved={gemini} />
-      <ProviderKey provider="openrouter" saved={openrouter} />
-    </section>
+    <div className="flex min-w-0 flex-col gap-8">
+      <Alert>
+        <KeyRoundIcon aria-hidden="true" />
+        <AlertDescription>
+          Keys are verified before saving and stored privately. Changes apply to
+          your next message. Removing a key disables that provider.
+        </AlertDescription>
+      </Alert>
+      <ProviderKey key={`gemini-${gemini}`} provider="gemini" saved={gemini} />
+      <Separator />
+      <ProviderKey
+        key={`openrouter-${openrouter}`}
+        provider="openrouter"
+        saved={openrouter}
+      />
+      <Separator />
+      <ProviderKey key={`openai-${openai}`} provider="openai" saved={openai} />
+      <Separator />
+      <p className="text-sm leading-relaxed text-muted-foreground">
+        Your provider bills calls made with your key, including memory
+        processing. Pro covers app access; there are no included AI credits.
+        Your subscription and sandbox limits still apply.
+      </p>
+    </div>
   )
 }

@@ -1,7 +1,10 @@
+import { redactAuthTelemetry } from "./lib/sentry-privacy"
 import * as Sentry from "@sentry/nextjs"
 import { sentryDsn } from "./lib/sentry"
 
 Sentry.init({
+  beforeSend: redactAuthTelemetry,
+  beforeSendTransaction: redactAuthTelemetry,
   dsn: sentryDsn,
   environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV,
   tracesSampleRate: process.env.NODE_ENV === "development" ? 1 : 0.1,

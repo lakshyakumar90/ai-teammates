@@ -1,6 +1,6 @@
 export const paidPlanSlug = "pro"
 export const paidPlanMessage =
-  "Pro plan required. Subscribe for $20/month to create or use bots and sandboxes."
+  "Pro plan required. Subscribe for $9/month to create or use bots and sandboxes."
 export type BillingFailure = { code: "PAID_PLAN_REQUIRED"; error: string }
 export const billingFailure: BillingFailure = {
   code: "PAID_PLAN_REQUIRED",

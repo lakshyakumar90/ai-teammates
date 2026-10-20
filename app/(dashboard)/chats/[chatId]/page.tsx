@@ -15,7 +15,8 @@ import {
 } from "@/components/ui/resizable"
 import { getBots } from "@/queries/bots"
 import { getChat } from "@/queries/chats"
-import { defaultModelId, modelOptions } from "@/lib/ai/models"
+import { defaultModelId } from "@/lib/ai/models"
+import { userModelOptions } from "@/lib/ai/chatgpt-model"
 
 export default async function ChatPage({
   params,
@@ -36,6 +37,7 @@ export default async function ChatPage({
     )
   }
 
+  const modelOptions = await userModelOptions(chat.userId)
   const availableBots = chat.kind === "group" ? await getBots() : undefined
 
   return (
@@ -85,7 +87,10 @@ export default async function ChatPage({
                       }))
                     : undefined
                 }
-                defaultModelId={defaultModelId}
+                defaultModelId={
+                  modelOptions.find((option) => option.configured)?.id ??
+                  defaultModelId
+                }
                 modelOptions={modelOptions}
               />
             </div>

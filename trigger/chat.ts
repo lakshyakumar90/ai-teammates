@@ -16,9 +16,9 @@ import {
   createGroupWorkflow,
 } from "../lib/ai/group-handoff"
 import { createComputerTools, getChatSandbox } from "../lib/ai/computer-tools"
-import { modelOptions } from "../lib/ai/models"
+import { userModelOptions } from "../lib/ai/chatgpt-model"
+import { trackWorkerRun, syncWorkerRun } from "../lib/worker-usage"
 import { meteredModel } from "../lib/ai/usage-model"
-import { ensureUsagePeriod } from "../lib/usage"
 import { responseTimeoutPolicy } from "../lib/ai/response-timeout"
 import { ChatRequestError, chatErrorMessage } from "../lib/ai/chat-error"
 import { requireUserPaidPlan } from "../lib/billing-agent"
@@ -28,9 +28,12 @@ import { desktopProgressPolicy } from "../lib/ai/desktop-progress"
 export const chatAgent = chat.agent({
   id: "chat-agent",
   onTurnStart: async ({ chatId, runId, turn }) => {
+    const bot = await getChatBot(chatId)
+    await trackWorkerRun(bot.userId, runId, "chat-agent")
     logger.info("Chat turn started", { chatId, "trigger.run.id": runId, turn })
   },
   onTurnComplete: async ({ chatId, runId, turn, stopped }) => {
+    await syncWorkerRun(runId).catch(() => undefined)
     logger.info("Chat turn finished", {
       chatId,
       "trigger.run.id": runId,
@@ -59,6 +62,8 @@ export const chatAgent = chat.agent({
         ),
         ...memory,
       }
+    const owner = await getChatBot(chatId, clientData?.botId)
+    const modelOptions = await userModelOptions(owner.userId)
     return {
       ...createComputerTools(
         () => getChatSandbox(chatId),
@@ -97,6 +102,8 @@ export const chatAgent = chat.agent({
   },
   run: async ({ chatId, messages, tools, clientData, signal, streamText }) => {
     if (!clientData) throw new ChatRequestError("Missing model selection")
+    const owner = await getChatBot(chatId, clientData.botId)
+    const modelOptions = await userModelOptions(owner.userId)
     const option = modelOptions.find(({ id }) => id === clientData.modelId)
     if (!option)
       throw new ChatRequestError(
@@ -130,17 +137,13 @@ export const chatAgent = chat.agent({
       const group = await isGroupChat(chatId)
       const bot = await getChatBot(chatId, clientData.botId)
       await requireUserPaidPlan(bot.userId)
-      const period = await ensureUsagePeriod(bot.userId)
-      const model = await meteredModel(
-        clientData.modelId,
-        bot.userId,
-        period.id
-      )
+      const model = await meteredModel(clientData.modelId, bot.userId)
       const memory = await getChatMemory(chatId, bot.id)
       const snapshot = await memory.read()
       const facts = memory.preferences.automaticMemory
         ? await captureUserMemory({
             model,
+            chatgpt: clientData.modelId.startsWith("chatgpt"),
             messages,
             signal,
             group,

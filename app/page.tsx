@@ -439,12 +439,13 @@ export default async function LandingPage() {
             <p>
               Bots, group chats, memory, and cloud computers.
               <br />
-              Up to 3 bots, $5 of AI usage, and 20 sandbox hours per period.
+              Up to 3 bots and 20 sandbox hours per period. Bring your own AI
+              keys.
             </p>
           </div>
           <div>
             <p className={styles.monthlyPrice}>
-              $20<span>/ month</span>
+              $9<span>/ month</span>
             </p>
             <Link href="/pricing" className={styles.primaryAction}>
               View pricing

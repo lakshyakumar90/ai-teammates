@@ -11,7 +11,7 @@ export async function getUserApiKeys(userId: string) {
   const stored = user.privateMetadata.providerApiKeys
   const keys: Partial<Record<ApiKeyProvider, string>> = {}
   if (stored && typeof stored === "object") {
-    for (const provider of ["gemini", "openrouter"] as const) {
+    for (const provider of ["gemini", "openrouter", "openai"] as const) {
       const key = (stored as Record<string, unknown>)[provider]
       if (typeof key === "string" && key.trim()) keys[provider] = key
     }

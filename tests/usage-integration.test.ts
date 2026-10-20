@@ -4,15 +4,9 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { eq } from "drizzle-orm"
 import { db } from "../lib/db/client"
-import {
-  usagePeriods,
-  usageEntries,
-  botCapacity,
-  sandboxLeases,
-} from "../lib/db/schema"
+import { usagePeriods, botCapacity, sandboxLeases } from "../lib/db/schema"
 import {
   reserveUsage,
-  settleAI,
   reserveBotCapacity,
   releaseBotCapacity,
   settleSandbox,
@@ -32,45 +26,18 @@ test("database ledger enforces concurrent limits, settles once, and isolates per
       }))
     )
     const reservations = await Promise.allSettled(
-      Array.from({ length: 12 }, () =>
-        reserveUsage(id, "ai", 1000000, "test-model")
-      )
+      Array.from({ length: 12 }, () => reserveUsage(next, "sandbox", 14400))
     )
-    const accepted = reservations.filter((r) => r.status === "fulfilled")
-    assert.equal(accepted.length, 5, "only five $1 debits fit the $5 allowance")
-    const entryId = accepted[0].value
-    await Promise.all(
-      Array.from({ length: 5 }, () => settleAI(entryId, 1000, 1000, 2000))
-    )
-    let row = await db.query.usagePeriods.findFirst({
-      where: eq(usagePeriods.id, id),
-    })
     assert.equal(
-      row?.aiMicros,
-      4001000,
-      "one refund despite concurrent duplicate settlement"
+      reservations.filter((r) => r.status === "fulfilled").length,
+      5,
+      "concurrent sandbox reservations cannot exceed twenty hours"
     )
-    assert.equal(row?.aiCalls, 5)
-    const entry = await db.query.usageEntries.findFirst({
-      where: eq(usageEntries.id, entryId),
-    })
-    assert.equal(entry?.inputTokens, 1000)
-    assert.equal(entry?.outputTokens, 2000)
-    assert.equal(entry?.settled, true)
-    await reserveUsage(next, "ai", 5000000)
-    await assert.rejects(reserveUsage(next, "ai", 1), /allowance/)
-    await assert.rejects(reserveUsage(next, "ai", 0), /allowance/)
-    await db
-      .update(usagePeriods)
-      .set({ aiCalls: 2000 })
-      .where(eq(usagePeriods.id, id))
-    const actualUsageEntry = await reserveUsage(id, "ai", 0, "test-model")
-    await settleAI(actualUsageEntry, 999000, 1000, 2000)
-    await assert.rejects(reserveUsage(id, "ai", 0), /allowance/)
+    await assert.rejects(reserveUsage(next, "sandbox", 1), /allowance/)
     const runtime = await reserveUsage(id, "sandbox", 72000)
     await assert.rejects(reserveUsage(id, "sandbox", 1), /allowance/)
     await Promise.all([settleSandbox(runtime, 45), settleSandbox(runtime, 45)])
-    row = await db.query.usagePeriods.findFirst({
+    const row = await db.query.usagePeriods.findFirst({
       where: eq(usagePeriods.id, id),
     })
     assert.equal(row?.sandboxSeconds, 45)
@@ -104,7 +71,7 @@ test("database ledger enforces concurrent limits, settles once, and isolates per
       .update(usagePeriods)
       .set({ endsAt: new Date(Date.now() - 1000) })
       .where(eq(usagePeriods.id, id))
-    await assert.rejects(reserveUsage(id, "ai", 0), /allowance/)
+    await assert.rejects(reserveUsage(id, "sandbox", 1), /allowance/)
   } finally {
     await db.delete(sandboxLeases).where(eq(sandboxLeases.userId, userId))
     await db.delete(botCapacity).where(eq(botCapacity.userId, userId))

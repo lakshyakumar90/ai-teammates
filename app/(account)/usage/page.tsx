@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { auth } from "@clerk/nextjs/server"
-import { count, eq, sum } from "drizzle-orm"
+import { and, count, eq, sum } from "drizzle-orm"
 import { ArrowLeftIcon, ClockIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
@@ -65,16 +65,19 @@ export default async function UsagePage() {
   const totals = snapshot
     ? await db
         .select({
-          input: sum(usageEntries.inputTokens),
-          output: sum(usageEntries.outputTokens),
+          cost: sum(usageEntries.amount),
+          duration: sum(usageEntries.durationMs),
+          count: count(),
         })
         .from(usageEntries)
-        .where(eq(usageEntries.periodId, snapshot.period.id))
+        .where(
+          and(
+            eq(usageEntries.periodId, snapshot.period.id),
+            eq(usageEntries.kind, "worker")
+          )
+        )
     : []
-  const usage = snapshot?.usage
-  const ai = usage?.aiMicros ?? 0
-  const seconds = usage?.sandboxSeconds ?? 0
-  const calls = usage?.aiCalls ?? 0
+  const seconds = snapshot?.usage?.sandboxSeconds ?? 0
   return (
     <section className="min-w-0 flex-1 bg-background px-4 py-8 text-foreground sm:px-8 sm:py-12">
       <div className="mx-auto max-w-4xl">
@@ -104,7 +107,7 @@ export default async function UsagePage() {
         {snapshot ? (
           <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-muted/50 p-5">
             <div>
-              <p className="text-sm font-medium">Pro · $20/month</p>
+              <p className="text-sm font-medium">Pro · $9/month</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 {snapshot.period.startsAt.toLocaleDateString("en-US", {
                   timeZone: "UTC",
@@ -133,8 +136,8 @@ export default async function UsagePage() {
           <div className="mb-6 rounded-xl border p-5">
             <p className="font-medium">No active Pro subscription</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Subscribe to get an AI and sandbox allowance. Free accounts cannot
-              use paid features.
+              Subscribe for background workers and a sandbox allowance. Free
+              accounts cannot use paid features.
             </p>
             <Button
               className="mt-4"
@@ -146,13 +149,18 @@ export default async function UsagePage() {
           </div>
         )}
         <div className="grid gap-4 sm:grid-cols-2">
-          <Meter
-            title="AI allowance"
-            used={ai}
-            limit={usageLimits.aiMicros}
-            label={`${money(ai)} / $5.00`}
-            description="Estimated model costs, including memory extraction, tool steps, and handoffs."
-          />
+          <section className="rounded-xl border p-5 sm:p-6">
+            <h2 className="font-medium">Background workers � Trigger.dev</h2>
+            <p className="mt-2 text-2xl font-semibold">
+              {money(Number(totals[0]?.cost ?? 0))}
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {(Number(totals[0]?.duration ?? 0) / 60000).toFixed(2)} compute
+              minutes � {Number(totals[0]?.count ?? 0)} runs. Vendor-reported
+              compute and invocation cost, refreshed periodically. This is
+              infrastructure usage, not an additional invoice.
+            </p>
+          </section>
           <Meter
             title="Sandbox runtime"
             used={seconds}
@@ -168,14 +176,18 @@ export default async function UsagePage() {
             description="Up to three bots at a time. Delete a bot to free a slot."
           />
           <section className="rounded-xl border p-5 sm:p-6">
-            <h2 className="font-medium">AI requests</h2>
-            <p className="mt-2 text-2xl font-semibold">
-              {calls.toLocaleString()}
-            </p>
+            <h2 className="font-medium">Your AI connection</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              No request-count limit. Requests stop when your AI spending
-              allowance is reached.
+              Gemini, OpenRouter and OpenAI bill your own API keys directly,
+              including memory and tool steps. Eligible ChatGPT requests use
+              your connected ChatGPT plan. AI is excluded from app usage.
             </p>
+            <Link
+              href="/api-keys"
+              className="mt-3 inline-block text-sm underline underline-offset-4"
+            >
+              Manage AI connections
+            </Link>
           </section>
         </div>
         <section className="mt-6 rounded-xl border p-5 sm:p-6">
@@ -205,11 +217,9 @@ export default async function UsagePage() {
           )}
         </section>
         <p className="mt-5 text-sm leading-relaxed text-muted-foreground">
-          {Number(totals[0]?.input ?? 0).toLocaleString()} input tokens ·{" "}
-          {Number(totals[0]?.output ?? 0).toLocaleString()} output tokens this
-          period. AI spend is recorded from confirmed provider token usage.
-          Requests already in progress can finish after the allowance is
-          reached. Allowances reset with your subscription period; unused
+          Pro is $9/month. Only background-worker and Daytona sandbox activity
+          appears here. Sandbox time includes active reservations until a
+          confirmed stop. Allowances reset with your subscription period; unused
           allowance does not roll over. No automatic overage charges.
         </p>
         {snapshot && (
@@ -241,7 +251,7 @@ export default async function UsagePage() {
                           </span>
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap tabular-nums">
-                          {entry.kind === "ai"
+                          {entry.kind === "worker"
                             ? money(entry.amount)
                             : entry.kind === "sandbox"
                               ? `${Math.ceil(entry.amount / 60)} min`

@@ -1,3 +1,61 @@
+# Current rollout: $9 Pro and personal AI connections
+
+The linked Clerk development instance used by the deployed app has Pro configured
+at USD 9/month. There is no production Clerk instance attached yet. A real
+production payment launch still requires a Clerk production instance and payment setup.
+
+Apply schema with `pnpm exec drizzle-kit push --force`. Deploy both the web app
+and Trigger worker from this working tree; do not commit automatically.
+The worker includes the chat-agent, stop-sandbox-lease and
+recover-expired-sandbox-leases tasks. The latter also reconciles user-owned worker
+runs. Registering a new chat run checks the live paid subscription.
+
+AI provider secrets are no longer synchronized to workers and are not used by the
+app model path. Users save Gemini, OpenRouter or OpenAI keys in /api-keys.
+Removing a key disables that provider, including on future tool-step calls.
+The official hosted ChatGPT integration remains disabled pending approved registration credentials;
+follow CHATGPT_SETUP.md before enabling it. Do not repurpose the local OSS OAuth flow.
+
+The account UI reports Trigger.dev compute/invocation cost and Daytona runtime;
+these are not automatic overage charges. Existing sandbox limits stay at 20 hours,
+three bot slots and one running computer. No included AI allowance remains.
+
+## Experimental ChatGPT rollout — October 19, 2026
+
+- Final web deployment: dpl_GwFVvkvHeGemPbxJgvzf7L9g6y1z, aliased to https://ai-teammates.lakshyakumar.in.
+- Trigger.dev worker: 20261019.3, deployment mvkgu9ky.
+- Sentry release: community-chatgpt-20261019-edd6bae9; web and worker source maps uploaded.
+- CHATGPT_COMMUNITY_ENABLED is configured on Vercel Production/Preview and synchronized to Trigger Production. Worker environment listing confirms the flag and encryption key are present, and no shared AI provider keys are present.
+- 85 Node tests and 29 UI/security tests passed; TypeScript, focused lint, and Vercel production builds passed. OAuth storage/refresh tests use a real database with mocked upstream responses; the SDK 7 transport test parses streamed function calls.
+- Live anonymous POST/DELETE connection requests return 403, and /api-keys redirects to sign-in.
+- Real extension-assisted ChatGPT sign-in and live Codex inference remain user verification steps; no personal ChatGPT session was reused for testing.
+
+## Previous personal-key rollout verification
+
+- Web: https://ai-teammates.lakshyakumar.in, deployment dpl_GLmhh5jk2B4Nn9yuqpPwoEbxh99z.
+- Trigger.dev production worker: 20261019.2, deployment 0r6jf60o.
+- Sentry release: personal-ai-20261019-96bd7612; both web and worker source maps uploaded.
+- Clerk public Pro fee verified through Backend API at 900 USD cents; live pricing
+  shows $9/month. Existing instance remains development, so this is not a claim
+  that production payment processing has been configured.
+- Shared Gemini/OpenRouter/Groq provider keys removed from Vercel Production/Preview
+  and Trigger.dev Production; the worker environment was checked for shared AI keys.
+- Matching connection encryption secret installed in web and worker environments.
+  No approved hosted ChatGPT client credentials exist yet. The separate community connection is enabled with CHATGPT_COMMUNITY_ENABLED=true on web and worker; see CHATGPT_SETUP.md for extension requirements and support limits.
+- 83 Node tests and 23 UI/security tests passed; TypeScript, focused ESLint, local
+  production build, and Vercel production build passed.
+- Live operator smoke run run_06gl9pdhtvhl3ee4v62mdkqs01 completed on 20261019.2 using
+  an existing user's OpenRouter key: model streaming, memory extraction, memory
+  reads and Daytona upload/download/delete all passed. Worker cost was reconciled
+  into the ledger without an AI charge. The earlier run also verified a settled
+  worker ledger entry and no duplicated cumulative costs.
+- Unauthenticated /api-keys redirects to sign-in; OAuth start and callback return
+  401 without a signed-in account. Hosted approval is checked independently.
+
+---
+
+# Historical deployment notes (superseded where they describe AI funding or price)
+
 # Deployment
 
 Deployed on October 17, 2026.

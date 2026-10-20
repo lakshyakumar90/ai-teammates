@@ -2,6 +2,7 @@ import { APICallError, RetryError, StreamProviderError } from "ai"
 import { ApiError } from "@trigger.dev/sdk"
 import { DaytonaError } from "@daytona/sdk"
 
+import { ChatGPTConnectionError } from "../chatgpt"
 import { ModelConfigurationError } from "./models"
 import { PaidPlanRequiredError } from "../billing-policy"
 import { UsageLimitError } from "../usage-policy"
@@ -15,6 +16,9 @@ export function sanitizeDetail(value: unknown) {
     "GOOGLE_GENERATIVE_AI_API_KEY",
     "GROQ_API_KEY",
     "OPENROUTER_API_KEY",
+    "OPENAI_API_KEY",
+    "CHATGPT_CLIENT_SECRET",
+    "CONNECTION_ENCRYPTION_KEY",
     "OLLAMA_API_KEY",
     "TRIGGER_SECRET_KEY",
     "DAYTONA_API_KEY",
@@ -41,6 +45,7 @@ export function chatErrorMessage(
     error instanceof PaidPlanRequiredError ||
     error instanceof UsageLimitError ||
     error instanceof ChatRequestError ||
+    error instanceof ChatGPTConnectionError ||
     error instanceof ModelConfigurationError
   ) {
     return sanitizeDetail(error.message)

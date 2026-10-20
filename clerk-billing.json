@@ -23,14 +23,17 @@
       },
       "pro": {
         "name": "Pro",
-        "description": "Up to 3 bots, $5 AI allowance and 1,000 model requests, 20 sandbox hours per billing period, and one running sandbox at a time.",
-        "amount": 2000,
+        "description": "Up to 3 bots, 20 sandbox hours per billing period, one running sandbox, and background workers. Bring your own Gemini, OpenRouter or OpenAI key. AI usage is billed separately by your provider.",
+        "amount": 900,
         "currency": "usd",
         "payer_type": "user",
         "is_recurring": true,
         "publicly_visible": true,
         "free_trial_enabled": false,
-        "features": ["bots", "sandboxes"]
+        "features": [
+          "bots",
+          "sandboxes"
+        ]
       }
     }
   }

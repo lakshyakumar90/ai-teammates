@@ -73,32 +73,17 @@ Set `DATABASE_URL` in the Trigger.dev worker environment as well as Next.js.
 
 ## AI chat
 
-Configure the providers you want to use in `.env.local`, then restart `pnpm dev`:
+Sign in, subscribe to Pro ($9/month), and open **API keys**. Save your own Gemini,
+OpenRouter, or OpenAI API key. Keys are verified before saving and stored in Clerk
+private metadata. The server and worker resolve the owner's key; there is no
+server-key fallback or included AI allowance. Removing a key disables that provider.
 
-```dotenv
-GOOGLE_GENERATIVE_AI_API_KEY=your-google-key
-OPENROUTER_API_KEY=your-openrouter-key
-GROQ_API_KEY=your-groq-key
-TRIGGER_SECRET_KEY=your-trigger-development-key
-OLLAMA_BASE_URL=http://127.0.0.1:11434/v1
-OLLAMA_MODEL=qwen3:4b
-```
-
-Open an existing chat and choose a model from Google Gemini, OpenRouter, Groq,
-or Ollama. Only the selected cloud provider needs an API key. OpenRouter and
-Ollama use `@ai-sdk/openai-compatible`; Groq uses `@ai-sdk/groq`.
-
-For local Ollama, run `ollama serve` and `ollama pull qwen3:4b` (or pull the
-model named in `OLLAMA_MODEL`). `OLLAMA_API_KEY` is optional for an authenticated
-Ollama endpoint. The base URL must include `/v1` and be reachable from the
-Trigger.dev worker; on a remote deployment, localhost refers to the worker.
-
-Chat runs as `chatAgent` in `trigger/chat.ts`. In a second terminal, run
+Chat runs as `chatAgent` in `trigger/chat.ts`. Run
 `pnpm dlx trigger.dev@4.7.4 dev start --env-file .env.local` alongside `pnpm dev`.
-Set the same provider variables in the Trigger.dev environment when deploying.
-The worker must be able to reach Ollama if you select a local model.
-After changing `.env.local`, restart the Trigger.dev dev command as well as Next.js;
-an already-running worker keeps its previous provider/model environment.
+The worker needs DATABASE_URL, CLERK_SECRET_KEY, DAYTONA_API_KEY and the appropriate
+Trigger.dev environment credentials, not shared AI provider credentials.
+
+For the separately gated ChatGPT subscription connection, see [CHATGPT_SETUP.md](CHATGPT_SETUP.md).
 
 Trigger.dev's default transcript storage persists messages by the existing chat ID.
 Opening a chat loads that transcript and reconnects to an in-progress response.

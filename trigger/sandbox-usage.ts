@@ -5,12 +5,18 @@ import { sandboxLeases } from "../lib/db/schema"
 import { usageNow } from "../lib/usage"
 import { z } from "zod"
 import { expiredLeases, stopLease } from "../lib/sandbox-usage"
+import { trackWorkerRun, reconcileWorkerUsage } from "../lib/worker-usage"
+import { logger } from "../lib/logging"
 
 export const stopSandboxLease = schemaTask({
   id: "stop-sandbox-lease",
   schema: z.object({ userId: z.string().min(1), leaseId: z.string().min(1) }),
   retry: { maxAttempts: 10 },
-  run: async ({ userId, leaseId }) => {
+  run: async ({ userId, leaseId }, { ctx }) => {
+    // Never let a billing outage prevent a sandbox safety stop.
+    await trackWorkerRun(userId, ctx.run.id, ctx.task.id).catch(() =>
+      logger.warn("Sandbox stop worker usage registration failed")
+    )
     const lease = await db.query.sandboxLeases.findFirst({
       where: and(
         eq(sandboxLeases.userId, userId),
@@ -39,6 +45,7 @@ export const recoverExpiredSandboxLeases = schedules.task({
         failures.push(error)
       }
     }
+    await reconcileWorkerUsage()
     if (failures.length)
       throw new AggregateError(failures, "Some sandbox stops failed")
   },

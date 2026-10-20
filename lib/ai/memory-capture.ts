@@ -1,4 +1,10 @@
-import { generateText, Output, type LanguageModel, type ModelMessage } from "ai"
+import {
+  generateText,
+  streamText,
+  Output,
+  type LanguageModel,
+  type ModelMessage,
+} from "ai"
 import { z } from "zod"
 
 export const memoryFactsSchema = z.object({
@@ -64,7 +70,9 @@ export async function captureUserMemory({
   signal,
   group = false,
   memory = {},
+  chatgpt = false,
 }: {
+  chatgpt?: boolean
   model: LanguageModel
   messages: ModelMessage[]
   signal: AbortSignal
@@ -73,7 +81,7 @@ export async function captureUserMemory({
 }) {
   const conversation = memoryConversation(messages)
   if (!conversation.latestUser) return []
-  const { output } = await generateText({
+  const result = await (chatgpt ? streamText : generateText)({
     model,
     output: Output.object({ schema: memoryFactsSchema }),
     instructions:
@@ -85,8 +93,9 @@ export async function captureUserMemory({
     }),
     abortSignal: signal,
     timeout: 30_000,
-    maxOutputTokens: 2048,
+    ...(chatgpt ? {} : { maxOutputTokens: 2048 }),
     maxRetries: 1,
   })
+  const output = await result.output
   return groundedMemoryFacts(output.facts, conversation.latestUser)
 }

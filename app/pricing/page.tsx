@@ -9,7 +9,7 @@ import { Spinner } from "@/components/ui/spinner"
 export const metadata: Metadata = {
   title: "Pricing — AI Teammates",
   description:
-    "Pro is $20 per month and includes all AI Teammates features: bots, group chats, memory, and cloud computers.",
+    "Pro is $9 per month and includes all AI Teammates features: bots, group chats, memory, and cloud computers.",
 }
 
 export default async function PricingPage() {
@@ -35,13 +35,13 @@ export default async function PricingPage() {
             One plan. Your whole team.
           </h1>
           <p className="mt-5 text-base leading-relaxed text-muted-foreground">
-            Pro is $20/month and unlocks all app features. Create bots, bring
+            Pro is $9/month and unlocks all app features. Create bots, bring
             them into group chats, and work with their cloud computers.
           </p>
           <div className="mt-6 flex flex-wrap justify-center gap-x-6 gap-y-3 text-sm">
             {[
               "Up to 3 bots & group chats",
-              "$5 AI allowance per period",
+              "Your Gemini, OpenRouter or OpenAI key",
               "20 sandbox hours per period",
             ].map((feature) => (
               <span key={feature} className="inline-flex items-center gap-2">
@@ -67,10 +67,11 @@ export default async function PricingPage() {
         <p className="mx-auto mt-8 max-w-xl text-center text-sm leading-relaxed text-muted-foreground">
           Free accounts can sign in and view plans. Creating or using bots and
           sandboxes requires Pro. Manage your subscription through your account
-          menu. Pro includes one running sandbox at a time and up to 1,000 model
-          requests per billing period. Both the AI cost allowance and request
-          limit apply. Sessions stop after 15 minutes; reconnect to continue.
-          Usage resets with your subscription. No automatic overage charges.
+          menu. Pro includes one running sandbox at a time. AI requests,
+          including memory processing, are billed by your chosen provider using
+          your own key. Worker and sandbox usage are tracked separately.
+          Sessions stop after 15 minutes; reconnect to continue. No automatic
+          overage charges.
         </p>
         <div className="mt-10 text-center">
           <Link

@@ -642,6 +642,12 @@ function ChatView({
               throw new Error(message)
             }
             if (!requirePaidAccess()) return
+            if (selectedModel.configured === false) {
+              setAttachmentError(
+                "Add your provider API key in API keys before sending a message."
+              )
+              return
+            }
             setAttachmentError(undefined)
             const recipient = groupBots
               ? resolveBotMention(text, groupBots, botId)
@@ -882,6 +888,9 @@ function ChatView({
                             >
                               <ModelSelectorName>
                                 {model.label}
+                                {model.configured === false
+                                  ? " � Add API key"
+                                  : ""}
                               </ModelSelectorName>
                               {model.id === modelId && (
                                 <CheckIcon aria-label="Selected" />

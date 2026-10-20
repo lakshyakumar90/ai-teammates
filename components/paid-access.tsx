@@ -62,7 +62,7 @@ export function PaidAccessProvider({
             <DialogTitle>Unlock your workspace with Pro</DialogTitle>
             <DialogDescription>
               Bots, group chats, memory, and cloud computers require an active
-              paid plan. Pro includes all features for $20/month.
+              paid plan. Pro includes all features for $9/month.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="sm:justify-center">
@@ -95,7 +95,7 @@ export function UpgradeRequired() {
         <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
           You’re on the Free plan. Subscribe to create bots and group chats,
           send messages, and use bot computers. All features are included for
-          $20/month.
+          $9/month.
         </p>
         <div className="mt-7 flex flex-wrap justify-center gap-3">
           <Button

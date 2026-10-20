@@ -10,6 +10,7 @@ import {
   BrainIcon,
   CreditCardIcon,
   ChartNoAxesCombinedIcon,
+  KeyRoundIcon,
 } from "lucide-react"
 import Link from "next/link"
 import { useParams, usePathname, useRouter } from "next/navigation"
@@ -206,6 +207,22 @@ export function AppSidebar({
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
+              tooltip="API keys"
+              onClick={() => setOpenMobile(false)}
+              render={
+                <Link
+                  href="/api-keys"
+                  aria-current={pathname === "/api-keys" ? "page" : undefined}
+                />
+              }
+              isActive={pathname === "/api-keys"}
+            >
+              <KeyRoundIcon />
+              <span>API keys</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
               tooltip="Memory & privacy"
               onClick={() => setOpenMobile(false)}
               render={<Link href="/memory" />}
@@ -235,6 +252,11 @@ export function AppSidebar({
                     }}
                   >
                     <UserButton.MenuItems>
+                      <UserButton.Link
+                        label="API keys"
+                        labelIcon={<KeyRoundIcon />}
+                        href="/api-keys"
+                      />
                       <UserButton.Link
                         label="Usage"
                         labelIcon={<ChartNoAxesCombinedIcon />}
