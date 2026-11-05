@@ -1,0 +1,46 @@
+flowchart LR
+  User["User (Browser)"]
+  subgraph Vercel["Vercel - Next.js 16 web app"]
+    Landing["/ landing (public)"]
+    Dash["(dashboard): /dashboard, /chats/[chatId]"]
+    Acct["(account): /api-keys, /billing, /memory, /profile, /usage"]
+    Pricing["/pricing"]
+    Actions["Server Actions (actions/*.ts)"]
+    RH["Route Handlers (app/api/connections/chatgpt/*)"]
+    Proxy["proxy.ts (clerkMiddleware)"]
+  end
+  subgraph Trigger["Trigger.dev Cloud - worker (Node 24)"]
+    CA["chat-agent (chat.agent)"]
+    SSL["stop-sandbox-lease (delayed)"]
+    REC["recover-expired-sandbox-leases (cron 1m)"]
+    INIT["trigger/init.ts (Sentry)"]
+  end
+  Neon["Neon Postgres (HTTP driver)"]
+  Clerk["Clerk (auth + billing Pro $9/mo + privateMetadata API keys)"]
+  Daytona["Daytona sandboxes (<=2 vCPU / 4GiB / 10GiB)"]
+  Sentry["Sentry (errors + scrubbed logs)"]
+  Providers["Model providers: Gemini / OpenRouter / OpenAI / ChatGPT (user-owned keys)"]
+
+  User --> Proxy
+  Proxy --> Vercel
+  Vercel --> Landing & Dash & Acct & Pricing
+  Dash --> Actions
+  Acct --> Actions & RH
+  Actions -- "billing gate getPaidAccessError" --> Clerk
+  Actions -- "Drizzle HTTP queries" --> Neon
+  Actions -- "startSession / mintChatAccessToken (1h PAT)" --> Trigger
+  Trigger -- "stream chunks (SSE)" --> Dash
+  CA -- "requireUserPaidPlan + meteredModel" --> Clerk
+  CA -- "trackWorkerRun / syncWorkerRun" --> Neon
+  CA -- "provider API (user key)" --> Providers
+  CA -- "getChatSandbox / computer tools / VNC" --> Daytona
+  SSL -- "stopLease + settleSandbox" --> Daytona
+  SSL --> Neon
+  REC --> SSL
+  REC --> Neon
+  RH -- "OAuth PKCE, encrypted creds" --> Neon
+  Vercel -- "errors + logs" --> Sentry
+  Trigger -- "errors + logs" --> Sentry
+
+  classDef ext fill:#eef,stroke:#88a
+  class Neon,Clerk,Daytona,Sentry,Providers ext

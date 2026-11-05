@@ -1,0 +1,22 @@
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as /api-keys Settings
+  participant Start as /api/connections/chatgpt/start
+  participant DB as Neon (oauth_attempts & chatgpt_connections)
+  participant OpenAI as OpenAI OAuth Endpoint
+  participant Callback as /api/connections/chatgpt/callback
+
+  User->>UI: Click "Connect ChatGPT Plus/Team"
+  UI->>Start: GET request to initiate OAuth
+  Start->>DB: Store hashed state & PKCE secrets in oauth_attempts (10m TTL)
+  Start-->>User: 302 Redirect to OpenAI Authorization Screen
+  User->>OpenAI: Authorize application
+  OpenAI-->>User: 302 Redirect to Callback with code & state
+  User->>Callback: GET with code & state
+  Callback->>DB: Verify & delete matching state in oauth_attempts
+  Callback->>OpenAI: Exchange authorization code for tokens
+  OpenAI-->>Callback: Return access & refresh tokens
+  Callback->>Callback: Encrypt tokens using AES-256-GCM (lib/connection-crypto.ts)
+  Callback->>DB: Persist encrypted credentials in chatgpt_connections
+  Callback-->>User: Redirect to /api-keys with success banner

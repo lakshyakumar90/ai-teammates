@@ -1,0 +1,29 @@
+flowchart TD
+  subgraph Root["ai-teammates (Root)"]
+    direction TB
+    AppDir["app/ (Next.js Pages & Routes)"]
+    ActionsDir["actions/ (Server Actions RPC)"]
+    ComponentsDir["components/ (React UI & Base UI)"]
+    LibDir["lib/ (Shared Domain & Logic)"]
+    TriggerDir["trigger/ (Trigger.dev Worker Tasks)"]
+    TestsDir["tests/ (Vitest & Node:test)"]
+  end
+
+  AppDir --> ComponentsDir
+  AppDir --> ActionsDir
+  AppDir --> LibDir
+  ActionsDir --> LibDir
+  ActionsDir --> TriggerDir
+  ComponentsDir --> ActionsDir
+  TriggerDir --> LibDir
+  TestsDir -. tests .-> AppDir & ActionsDir & ComponentsDir & LibDir & TriggerDir
+
+  subgraph LibInternals["lib/ Breakdown"]
+    direction LR
+    Db["lib/db/ (Neon + Drizzle)"]
+    AI["lib/ai/ (Tools, Memory, Models)"]
+    Billing["lib/billing* (Clerk Entitlements)"]
+    Daytona["lib/daytona* (Sandboxes & VNC)"]
+  end
+
+  LibDir --- LibInternals

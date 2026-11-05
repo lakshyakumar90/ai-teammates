@@ -1,0 +1,37 @@
+flowchart TD
+  subgraph Routes["Next.js App Router (app/)"]
+    Landing["/ (Landing Page - RSC)"]
+    Pricing["/pricing (Pricing Table)"]
+    subgraph DashboardGroup["(dashboard)"]
+      Dash["/dashboard (Empty state or recent chats)"]
+      Chat["/chats/[chatId] (Direct or Group Chat)"]
+    end
+    subgraph AccountGroup["(account)"]
+      APIKeys["/api-keys (Key Management)"]
+      BillingPage["/billing (Clerk Subscription)"]
+      MemoryPage["/memory (Preferences & Facts)"]
+      ProfilePage["/profile (User Details)"]
+      UsagePage["/usage (Meters & Kill Switch)"]
+    end
+  end
+
+  subgraph UIComponents["UI Components (components/)"]
+    Sidebar["app-sidebar.tsx (Navigation & Meters)"]
+    ChatComp["chat.tsx (Chat Engine)"]
+    DesktopViewer["chat-desktop-viewer.tsx (noVNC Canvas)"]
+    BotDialog["bot-dialog.tsx (Bot Creator)"]
+    GroupDialog["group-chat-dialog.tsx (Group Creator)"]
+    PaidAccessModal["paid-access.tsx (Billing Modal)"]
+  end
+
+  subgraph Primitives["UI Primitives & AI Elements"]
+    BaseUI["components/ui/* (Base UI + Tailwind v4)"]
+    AIElements["components/ai-elements/* (Code, Message, Tool, Input)"]
+  end
+
+  Routes --> Sidebar
+  Chat --> ChatComp
+  ChatComp --> DesktopViewer
+  ChatComp --> AIElements
+  Sidebar --> BotDialog & GroupDialog
+  UIComponents --> BaseUI

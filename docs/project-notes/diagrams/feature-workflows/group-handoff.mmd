@@ -1,0 +1,19 @@
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Group Chat UI
+  participant Worker as Trigger.dev (chat-agent)
+  participant BotA as Bot A (Planner)
+  participant BotB as Bot B (Coder)
+
+  User->>UI: "@Planner please design and build the feature"
+  UI->>Worker: Dispatch turn with designated responder: Bot A
+  Worker->>BotA: Invoke with group roster and system instructions
+  BotA->>Worker: Stream text planning steps
+  BotA->>Worker: Call handoff({ targetBotId: "bot-b", summary: "Plan approved. Implement code." })
+  Worker->>UI: Stream handoff divider element
+  Worker->>Worker: Switch active persona, memory & sandbox to Bot B
+  Worker->>BotB: Invoke with handoff summary & context
+  BotB->>Worker: Execute code in Bot B's Daytona container
+  BotB->>Worker: Stream completion message
+  Worker->>UI: Stream final response & finish turn

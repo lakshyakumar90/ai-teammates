@@ -1,0 +1,30 @@
+sequenceDiagram
+  autonumber
+  actor Browser as Browser Client (@trigger.dev/sdk/chat/react)
+  participant Action as actions/chat.ts
+  participant Worker as Trigger.dev (chat-agent)
+  participant Model as LLM Provider (Gemini / OpenRouter)
+  participant Daytona as Daytona Sandbox (Linux)
+
+  Browser->>Action: startChatTurn(chatId, message, model)
+  Action->>Worker: startSession() & mintChatAccessToken(1h)
+  Worker-->>Action: { sessionId, publicAccessToken }
+  Action-->>Browser: Return credentials
+
+  Browser->>Worker: Connect SSE stream (PAT)
+  Worker->>Model: Call LLM with instructions, memory & computerTools
+
+  loop AI Execution & Tool Loop
+    Model-->>Worker: text-delta ("Running bash command...")
+    Worker-->>Browser: Stream SSE text-delta
+    Model-->>Worker: tool-call ("bash", { command: "ls -la" })
+    Worker-->>Browser: Stream SSE tool-call
+    Worker->>Daytona: Execute command inside container
+    Daytona-->>Worker: Command output: "file1.txt file2.txt"
+    Worker-->>Browser: Stream SSE tool-result
+    Worker->>Model: Return tool output to LLM context
+  end
+
+  Model-->>Worker: final text response
+  Worker-->>Browser: Stream SSE final text & finish event
+  Worker->>Worker: Schedule delayed stop-sandbox-lease (5m)

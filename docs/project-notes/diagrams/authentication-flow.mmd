@@ -1,0 +1,30 @@
+sequenceDiagram
+  autonumber
+  actor User as Browser / User
+  participant Proxy as proxy.ts (clerkMiddleware)
+  participant Clerk as Clerk Auth & Billing
+  participant Actions as Server Actions (Next.js)
+  participant Worker as Trigger.dev Worker
+
+  User->>Proxy: Request /dashboard
+  alt Not Authenticated
+    Proxy-->>User: 307 Redirect to /sign-in
+    User->>Clerk: Sign in (Credentials / OAuth)
+    Clerk-->>User: Set __session HttpOnly cookie
+  else Authenticated
+    Proxy-->>User: Render Dashboard Page
+  end
+
+  User->>Actions: Invoke startChatTurn(chatId, msg, model)
+  Actions->>Clerk: auth.getUser() & requireUserPaidPlan(userId)
+  alt Free Account (No Pro Plan)
+    Clerk-->>Actions: Missing required entitlements
+    Actions-->>User: Return PaidAccessError (Prompt to Upgrade)
+  else Pro Account Active
+    Actions->>Clerk: Fetch privateMetadata (Decrypted API Key)
+    Clerk-->>Actions: Return personal provider key
+    Actions->>Worker: Start chat-agent session & mint 1h PAT
+    Worker-->>Actions: Return PAT & sessionId
+    Actions-->>User: Return { publicAccessToken, sessionId }
+    User->>Worker: Connect direct SSE stream using PAT
+  end

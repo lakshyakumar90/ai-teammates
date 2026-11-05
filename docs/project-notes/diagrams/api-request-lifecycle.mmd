@@ -1,0 +1,22 @@
+sequenceDiagram
+  autonumber
+  actor User as User Browser
+  participant Action as Server Action (actions/bot.ts)
+  participant Auth as Clerk Auth Gate
+  participant Policy as lib/usage-policy.ts
+  participant DB as Neon PostgreSQL (HTTP)
+
+  User->>Action: createBot(formData)
+  Action->>Auth: auth.getUser()
+  Auth-->>Action: userId (Authenticated)
+  Action->>Policy: checkBotCapacity(userId)
+  Policy->>DB: SELECT count FROM bot_capacity WHERE userId = ...
+  DB-->>Policy: count = 1 (Limit: 3)
+  Policy-->>Action: Allowed
+
+  Action->>Action: Generate DiceBear Avatar & Validate insertBotSchema
+  Action->>DB: INSERT INTO bots (id, userId, name, job, instructions, avatar)
+  DB-->>Action: Insert Successful
+
+  Action->>Action: revalidatePath('/')
+  Action-->>User: { success: true, botId: "bot_123" }

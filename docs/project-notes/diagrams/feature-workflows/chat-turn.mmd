@@ -1,0 +1,18 @@
+flowchart TD
+  UserSend(["User sends chat message"]) --> Action["actions/chat.ts: startChatTurn()"]
+  Action --> KeyLookup["Fetch decrypted user key from Clerk privateMetadata"]
+  Action --> LeaseAcquire["lib/sandbox-usage.ts: acquireSandboxLease() CAS"]
+  LeaseAcquire --> TriggerStart["Trigger.dev: startSession()"]
+  TriggerStart --> MintPAT["Mint 1h Public Access Token"]
+  MintPAT --> ClientSSE["Browser connects to SSE stream"]
+  ClientSSE --> WorkerRun["Worker loads system prompt, memories & Daytona tools"]
+  WorkerRun --> LLMCall["Call AI model (Gemini / OpenRouter)"]
+  LLMCall --> ToolOrText{"Tool call or text?"}
+  ToolOrText -- Tool Call --> ExecTool["Execute bash/fs/desktop in Daytona"]
+  ExecTool --> ReturnResult["Return tool result to LLM"]
+  ReturnResult --> LLMCall
+  ToolOrText -- Text Delta --> StreamDelta["Stream SSE chunk to Browser"]
+  StreamDelta --> TurnDone{"Generation Complete?"}
+  TurnDone -- No --> LLMCall
+  TurnDone -- Yes --> ExtractMem["lib/ai/memory-capture.ts: Extract facts"]
+  ExtractMem --> SchedShutdown["Schedule stop-sandbox-lease (delayed 5m)"]

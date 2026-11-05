@@ -1,0 +1,10 @@
+flowchart TD
+  UserKey["User enters Gemini or OpenRouter key in /api-keys"] --> Submit["Submit to actions/api-keys.ts: saveApiKey()"]
+  Submit --> FormValid{"Format valid?"}
+  FormValid -- No --> ReturnErr["Display syntax error in UI"]
+  FormValid -- Yes --> LiveTest["lib/ai/provider-key-validation.ts: Test request"]
+  LiveTest --> KeyWorks{"Vendor accepts key?"}
+  KeyWorks -- No --> RejectKey["Display 'Invalid key or unauthorized' error"]
+  KeyWorks -- Yes --> ClerkSave["Save to Clerk privateMetadata (clerkClient)"]
+  ClerkSave --> NeverDB["Never written to Neon DB"]
+  NeverDB --> Success["Display success badge in UI"]

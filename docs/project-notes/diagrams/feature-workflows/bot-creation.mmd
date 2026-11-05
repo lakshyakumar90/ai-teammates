@@ -1,0 +1,12 @@
+flowchart TD
+  Start(["User clicks 'New Bot'"]) --> OpenDialog["Open bot-dialog.tsx"]
+  OpenDialog --> InputData["Enter Name, Role, Instructions & Seed Avatar"]
+  InputData --> SubmitForm["Submit to actions/bot.ts: createBot()"]
+  SubmitForm --> AuthCheck{"Authenticated & Pro Plan?"}
+  AuthCheck -- No --> RejectAuth["Return PaidAccessError"]
+  AuthCheck -- Yes --> CapCheck{"Bot Count < 3?"}
+  CapCheck -- No --> RejectCap["Return Capacity Limit Error"]
+  CapCheck -- Yes --> DiceBear["Generate DiceBear 10 Avatar SVG Seed"]
+  DiceBear --> DBInsert["INSERT INTO bots in Neon DB"]
+  DBInsert --> Revalidate["revalidatePath('/')"]
+  Revalidate --> CloseDialog["Dialog Closes & Sidebar Updates"]

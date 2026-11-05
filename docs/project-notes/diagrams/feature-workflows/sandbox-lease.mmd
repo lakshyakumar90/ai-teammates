@@ -1,0 +1,10 @@
+stateDiagram-v2
+  [*] --> Idle: User has no active container
+  Idle --> Provisioning: acquireSandboxLease() CAS
+  Provisioning --> Ready: Daytona container boots & ports ready
+  Ready --> ActiveTurn: Bot executing commands / VNC stream open
+  ActiveTurn --> GracePeriod: Turn completes; delayed 5m shutdown scheduled
+  GracePeriod --> ActiveTurn: New message arrives before 5m (extend lease)
+  GracePeriod --> Stopping: 5m timer expires OR user clicks "Stop My Sandbox"
+  Stopping --> Idle: Daytona confirms container stopped; CAS lease cleared
+  Ready --> Stopping: 1m Cron detects lease expiration (rescue)

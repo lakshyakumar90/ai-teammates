@@ -1,0 +1,27 @@
+flowchart LR
+  subgraph LocalDev["Local Quality Gates (Manual)"]
+    Dev["Developer Machine"]
+    Check["pnpm check (tsc --noEmit)"]
+    Lint["pnpm lint (ESLint 9)"]
+    Test["pnpm test (Vitest + Node:test)"]
+    Dev --> Check --> Lint --> Test
+  end
+
+  subgraph DeployWeb["Vercel Web Tier"]
+    BuildWeb["pnpm run build"]
+    DeployVercel["vercel deploy --prod"]
+    VercelLive["Vercel Production Edge & Functions"]
+    Test --> BuildWeb --> DeployVercel --> VercelLive
+  end
+
+  subgraph DeployWorker["Trigger.dev Worker Tier"]
+    DeployTrig["npx trigger.dev@latest deploy"]
+    TriggerLive["Trigger.dev Managed Node 24 Workers"]
+    Test --> DeployTrig --> TriggerLive
+  end
+
+  subgraph DBDeploy["Neon Database Tier"]
+    PushDB["pnpm db:push"]
+    NeonLive["Neon Serverless PostgreSQL"]
+    Test --> PushDB --> NeonLive
+  end

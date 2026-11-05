@@ -1,0 +1,40 @@
+flowchart TD
+  subgraph EntryGates["Request & Security Gates"]
+    Proxy["proxy.ts (clerkMiddleware)"]
+    BillingGate["lib/billing.ts (requireUserPaidPlan)"]
+  end
+
+  subgraph ServerActions["Server Actions (actions/*.ts)"]
+    ChatAction["actions/chat.ts (startChatTurn, createDirectChat)"]
+    BotAction["actions/bot.ts (createBot, updateBot, deleteBot)"]
+    GroupAction["actions/group-chat.ts (createGroupChat)"]
+    KeyAction["actions/api-keys.ts (saveApiKey, deleteApiKey)"]
+    DesktopAction["actions/desktop.ts (getDesktopStreamUrl)"]
+    UsageAction["actions/usage.ts (getUsageSummary, stopActiveSandboxAction)"]
+  end
+
+  subgraph RouteHandlers["Route Handlers (app/api/connections/chatgpt/*)"]
+    StartRoute["start/route.ts (PKCE Start)"]
+    CallbackRoute["callback/route.ts (Code Exchange)"]
+    CommunityRoute["community/route.ts (Community Flow)"]
+  end
+
+  subgraph SharedLib["Shared Core (lib/)"]
+    DBClient["lib/db/client.ts (Neon Drizzle)"]
+    DaytonaClient["lib/daytona.ts (Daytona SDK)"]
+    AITools["lib/ai/computer-tools.ts (Bash, FS, VNC)"]
+    AIMemory["lib/ai/memory-manager.ts (Synthesis)"]
+    LeaseMgr["lib/sandbox-usage.ts (CAS Lease)"]
+  end
+
+  subgraph Worker["Trigger.dev Worker (trigger/*.ts)"]
+    ChatAgent["chat-agent (chat.agent loop)"]
+    StopLease["stop-sandbox-lease (delayed 5m)"]
+    RecCron["recover-expired-sandbox-leases (cron 1m)"]
+  end
+
+  Proxy --> ServerActions & RouteHandlers
+  ServerActions --> BillingGate
+  ServerActions --> SharedLib
+  ChatAction -- "Mint PAT & Start Session" --> Worker
+  Worker --> SharedLib

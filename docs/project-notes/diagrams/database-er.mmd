@@ -1,0 +1,117 @@
+erDiagram
+  usage_periods ||--o{ usage_entries : "has many"
+  usage_periods ||--o{ worker_runs : "tracks"
+  chats ||--o{ chat_members : "includes"
+  bots ||--o{ chat_members : "participates in"
+  chats ||--o{ group_memories : "stores"
+
+  usage_periods {
+    text id PK
+    text userId
+    timestamp startsAt
+    timestamp endsAt
+    integer sandboxSeconds
+    integer botCreations
+  }
+
+  usage_entries {
+    text id PK
+    text periodId FK
+    text kind
+    text modelId
+    bigint amount
+    bigint durationMs
+    boolean settled
+    timestamp createdAt
+  }
+
+  sandbox_leases {
+    text userId PK
+    text id
+    text sandboxId
+    text entryId
+    timestamp startsAt
+    timestamp endsAt
+    boolean ready
+    timestamp stoppingUntil
+  }
+
+  bot_capacity {
+    text userId PK
+    integer count
+  }
+
+  chatgpt_connections {
+    text userId PK
+    text subject
+    text clientId
+    text credentials
+    timestamp expiresAt
+    integer revision
+  }
+
+  oauth_attempts {
+    text stateHash PK
+    text userId
+    text secrets
+    timestamp expiresAt
+  }
+
+  worker_runs {
+    text id PK
+    text userId
+    text periodId FK
+    text taskId
+    bigint costMicros
+    bigint durationMs
+    boolean complete
+  }
+
+  bots {
+    text id PK
+    text userId
+    text name
+    text avatar
+    text job
+    text instructions
+    text sandboxId
+    timestamp createdAt
+  }
+
+  memory_preferences {
+    text userId PK
+    boolean automaticMemory
+    boolean globalMemory
+    boolean groupMemory
+    boolean botMemoryInGroups
+  }
+
+  user_memories {
+    text userId PK
+    text key PK
+    text value
+    timestamp updatedAt
+  }
+
+  chats {
+    text id PK
+    text userId
+    text kind
+    text name
+    text lastMessagePreview
+    timestamp lastMessageAt
+    timestamp createdAt
+  }
+
+  chat_members {
+    text chatId PK,FK
+    text botId PK,FK
+    timestamp joinedAt
+  }
+
+  group_memories {
+    text chatId PK,FK
+    text key PK
+    text value
+    timestamp updatedAt
+  }
