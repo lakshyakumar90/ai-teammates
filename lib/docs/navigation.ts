@@ -133,6 +133,17 @@ export const DOCS_SECTIONS: DocsNavSection[] = [
       },
     ],
   },
+  {
+    title: "Diagrams",
+    items: [
+      {
+        slug: "diagrams",
+        title: "Diagram Gallery — All 15 Diagrams",
+        shortTitle: "Diagram Gallery",
+        order: 99,
+      },
+    ],
+  },
 ]
 
 export const DOC_SLUGS: string[] = DOCS_SECTIONS.flatMap((s) =>

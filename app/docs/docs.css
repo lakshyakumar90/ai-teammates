@@ -291,15 +291,133 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--card);
-  padding: 1rem;
+  padding: 1rem 1.1rem;
   margin: 1.25rem 0;
   overflow-x: auto;
+  /* Mermaid SVG inherits page theme — never force a white box here */
 }
-.docs-diagram-rendered svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+.docs-diagram-title {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  margin-bottom: 0.75rem;
+  color: var(--foreground);
+}
+.docs-diagram-rendered svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  /* Let mermaid's own colors show — don't invert or force blacks/whites */
+  background: transparent;
+}
+.docs-diagram-rendered svg text { fill: currentColor; }
+/* Sequence / flowchart edges follow the active theme via CSS variables */
+.docs-diagram-rendered .edgePath path { stroke: var(--muted-foreground); }
+.docs-diagram-rendered .node rect,
+.docs-diagram-rendered .node polygon,
+.docs-diagram-rendered .node ellipse,
+.docs-diagram-rendered .node circle {
+  fill: var(--card);
+  stroke: var(--border);
+}
+.docs-diagram-rendered .nodeLabel,
+.docs-diagram-rendered .edgeLabel {
+  color: var(--foreground);
+}
+.docs-diagram-rendered .cluster rect {
+  fill: var(--muted);
+  stroke: var(--border);
+}
 .docs-diagram-source { font-size: 0.8125rem; white-space: pre-wrap; }
+.docs-diagram-source-toggle {
+  margin: 1rem 0 2rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+}
+.docs-diagram-source-toggle summary {
+  cursor: pointer;
+  padding: 0.75rem 1rem;
+  font-weight: 550;
+  font-size: 0.875rem;
+}
+.docs-diagram-source-toggle pre {
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  background: var(--muted);
+  padding: 1rem 1.1rem;
+  overflow-x: auto;
+  font-size: 0.8125rem;
+  margin: 0;
+}
 .docs-diagram-error { border-color: var(--destructive); }
 .docs-diagram-error-title { font-weight: 600; margin-bottom: 0.5rem; }
 .docs-diagram-error-msg { font-size: 0.8125rem; color: var(--destructive); margin-top: 0.5rem; }
+
+/* ---------- Diagram gallery ---------- */
+.docs-gallery { margin-top: 1.5rem; }
+.docs-gallery-group { margin-bottom: 2rem; }
+.docs-gallery-group-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+.docs-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 0.9rem;
+}
+.docs-gallery-card {
+  display: block;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--card);
+  color: var(--foreground);
+  text-decoration: none;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.docs-gallery-card:hover {
+  background: var(--accent);
+  border-color: var(--muted-foreground);
+  text-decoration: none;
+}
+.docs-gallery-card:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.docs-gallery-card-category {
+  font-size: 0.6875rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted-foreground);
+  margin-bottom: 0.35rem;
+}
+.docs-gallery-card-title { font-weight: 600; font-size: 0.9375rem; }
+.docs-gallery-card-desc {
+  margin: 0.4rem 0 0.6rem;
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+  line-height: 1.45;
+}
+.docs-gallery-card-source code {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  background: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+  padding: 0.1rem 0.35rem;
+  color: var(--muted-foreground);
+  word-break: break-all;
+}
+.docs-gallery-note {
+  margin-top: 1.5rem;
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+}
 
 /* ---------- Footer ---------- */
 .docs-footer {
