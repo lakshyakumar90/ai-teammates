@@ -146,6 +146,7 @@ export default async function LandingPage() {
           <a href="#memory">Memory</a>
           <a href="#your-team">Your team</a>
           <Link href="/pricing">Pricing</Link>
+          <Link href="/docs">Docs</Link>
           <a href="#questions">Questions</a>
         </nav>
         <Link
