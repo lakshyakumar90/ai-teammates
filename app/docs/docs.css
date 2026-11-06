@@ -311,23 +311,19 @@
   background: transparent;
 }
 .docs-diagram-rendered svg text { fill: currentColor; }
-/* Sequence / flowchart edges follow the active theme via CSS variables */
-.docs-diagram-rendered .edgePath path { stroke: var(--muted-foreground); }
-.docs-diagram-rendered .node rect,
-.docs-diagram-rendered .node polygon,
-.docs-diagram-rendered .node ellipse,
-.docs-diagram-rendered .node circle {
-  fill: var(--card);
-  stroke: var(--border);
-}
-.docs-diagram-rendered .nodeLabel,
-.docs-diagram-rendered .edgeLabel {
-  color: var(--foreground);
-}
-.docs-diagram-rendered .cluster rect {
-  fill: var(--muted);
-  stroke: var(--border);
-}
+/* Themed by mermaid's own themeVariables (set in mermaid-diagram.tsx).
+   Do NOT force fill/stroke here — overriding breaks sequence/er/state diagrams. */
+.docs-diagram-rendered .actor { fill: var(--card); stroke: var(--border); }
+.docs-diagram-rendered .actor text { fill: var(--foreground); }
+.docs-diagram-rendered .note { fill: var(--muted); stroke: var(--border); }
+.docs-diagram-rendered .noteText { fill: var(--foreground); }
+.docs-diagram-rendered .messageLine0,
+.docs-diagram-rendered .messageLine1 { stroke: var(--muted-foreground); }
+.docs-diagram-rendered .messageText,
+.docs-diagram-rendered .messageText tspan { fill: var(--foreground); }
+.docs-diagram-rendered .er text { fill: var(--foreground); }
+.docs-diagram-rendered .stateGroup rect { fill: var(--muted); stroke: var(--border); }
+.docs-diagram-rendered .stateLabel text { fill: var(--foreground); }
 .docs-diagram-source { font-size: 0.8125rem; white-space: pre-wrap; }
 .docs-diagram-source-toggle {
   margin: 1rem 0 2rem;

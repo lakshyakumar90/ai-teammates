@@ -42,5 +42,6 @@ flowchart LR
   Vercel -- "errors + logs" --> Sentry
   Trigger -- "errors + logs" --> Sentry
 
-  classDef ext fill:#eef,stroke:#88a
-  class Neon,Clerk,Daytona,Sentry,Providers ext
+  %% External services use the standard node styling (theme-aware via
+  %% mermaid-diagram.tsx). No classDef with hardcoded colors here —
+  %% hardcoded fills break dark mode (white box on dark page).
